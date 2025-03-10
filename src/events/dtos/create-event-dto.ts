@@ -9,6 +9,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { Group } from 'src/entities/group.entity';
 
 class LocationDto {
   @IsNotEmpty()
@@ -57,7 +58,7 @@ export class CreateEventDto {
 
   @IsNotEmpty()
   @IsNumber()
-  group: number; // This will represent the group ID
+  group: Group;
 
   @IsNotEmpty()
   @IsString()

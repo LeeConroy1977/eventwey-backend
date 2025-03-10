@@ -8,12 +8,15 @@ import { Group } from 'src/entities/group.entity';
 import { GroupsModule } from 'src/groups/groups.module';
 import { AppEvent } from 'src/entities/event.entity';
 import { EventsModule } from 'src/events/events.module';
+import { Notification } from 'src/entities/notification.entity';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Group, AppEvent]), // Register entities
+    TypeOrmModule.forFeature([User, Group, AppEvent, Notification]), // Register entities
     forwardRef(() => AuthModule), // Resolve circular dependency
     forwardRef(() => EventsModule),
+    forwardRef(() => NotificationsModule),
     GroupsModule,
   ],
   controllers: [UsersController],

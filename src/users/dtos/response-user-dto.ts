@@ -1,6 +1,8 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { Connection } from 'src/entities/connection.entity';
 import { AppEvent } from 'src/entities/event.entity';
 import { Group } from 'src/entities/group.entity';
+import { User } from 'src/entities/user.entity';
 
 export class ResponseUserDto {
   @Expose()
@@ -65,4 +67,24 @@ export class ResponseUserDto {
 
   @Expose()
   groups: Group[];
+
+  @Expose()
+  connections: User[];
+
+  @Expose()
+  sentConnections: Connection[];
+
+  @Expose()
+  receivedConnections: Connection[];
+
+  @Expose()
+  notifications: Notification[];
+
+  @Expose()
+  @Type(() => ResponseUserDto) // Ensure serialization of the nested object
+  requester: ResponseUserDto;
+
+  @Expose()
+  @Type(() => ResponseUserDto) // Ensure serialization of the nested object
+  recipient: ResponseUserDto;
 }

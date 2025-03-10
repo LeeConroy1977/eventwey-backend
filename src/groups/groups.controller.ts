@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Req,
+  Delete,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 
@@ -15,10 +16,17 @@ import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { CreateGroupDto } from './dtos/create-group-dto';
 import { Request } from 'express';
 import { User } from 'src/entities/user.entity';
+import { AppEvent } from 'src/entities/event.entity';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { ResponseUserDto } from 'src/users/dtos/response-user-dto';
 
 export interface AuthenticatedUser {
   id: number;
   email: string;
+}
+
+interface AuthenticatedRequest extends Request {
+  user: { id: number; username: string; email: string };
 }
 
 @Controller('groups')
@@ -36,13 +44,27 @@ export class GroupsController {
   }
 
   @Get()
-  async getAllGroups(): Promise<Group[]> {
-    return this.groupsService.getAllGroups();
+  async findAllGroups(): Promise<Group[]> {
+    return this.groupsService.findAllGroups();
   }
 
   @Get('/:id')
-  async getGroupById(@Param('id', ParseIntPipe) id: number): Promise<Group> {
-    return this.groupsService.getGroupById(id);
+  async findGroupById(@Param('id', ParseIntPipe) id: number): Promise<Group> {
+    return this.groupsService.findGroupById(id);
+  }
+  @Serialize(ResponseUserDto)
+  @Get('/:groupId/members')
+  async findGroupMembers(
+    @Param('groupId', ParseIntPipe) groupId: number,
+  ): Promise<User[]> {
+    return this.groupsService.findGroupMembers(groupId);
+  }
+
+  @Get('/:groupId/events')
+  async findGroupEvents(
+    @Param('groupId', ParseIntPipe) groupId: number,
+  ): Promise<AppEvent[]> {
+    return this.groupsService.findGroupEvents(groupId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -50,10 +72,10 @@ export class GroupsController {
   async addUserToGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Req() req: Request,
-  ): Promise<string> {
+  ): Promise<Group> {
     const user = req.user as AuthenticatedUser;
-    await this.groupsService.addUserToGroup(groupId, user.id);
-    return `User ${user.id} successfully joined group ${groupId}`;
+    const group = await this.groupsService.addUserToGroup(groupId, user.id);
+    return group;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -61,9 +83,19 @@ export class GroupsController {
   async leaveGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Req() req: Request,
-  ): Promise<string> {
+  ): Promise<Group> {
     const user = req.user as AuthenticatedUser;
-    await this.groupsService.leaveGroup(groupId, user.id);
-    return `User ${user.id} successfully left group ${groupId}`;
+    const group = await this.groupsService.leaveGroup(groupId, user.id);
+    return group;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':groupId')
+  async deleteGroup(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Req() req: Request,
+  ) {
+    const user = req.user as AuthenticatedUser;
+    return this.groupsService.deleteGroup(groupId, user.id);
   }
 }

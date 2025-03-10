@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -32,6 +33,24 @@ export class EventsController {
   async findAllEvents() {
     return await this.eventsService.findAllEvents();
   }
+
+  @Get('/:id')
+  async findEventById(@Param('id', ParseIntPipe) eventId: number) {
+    const event = await this.eventsService.findEventById(eventId);
+    return event;
+  }
+
+  @Get('/:id/attendees')
+  async findEventAttendees(@Param('id', ParseIntPipe) eventId: number) {
+    return this.eventsService.findEventAttendees(eventId);
+  }
+
+  @Get('/:id/group')
+  async findEventGroup(@Param('id', ParseIntPipe) eventId: number) {
+    const group = await this.eventsService.findEventGroup(eventId);
+    return group;
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('/:id/join')
   async joinEvent(
@@ -48,5 +67,15 @@ export class EventsController {
   async leaveEvent(@Param('id', ParseIntPipe) eventId: number, @Req() req) {
     const userId = req.user.id;
     return this.eventsService.leaveEvent(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':eventId')
+  async deleteEvent(
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user.id;
+    return this.eventsService.deleteEvent(eventId, userId);
   }
 }

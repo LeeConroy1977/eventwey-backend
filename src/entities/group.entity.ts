@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   ManyToMany,
   OneToMany,
+  JoinTable,
 } from 'typeorm';
 import { User } from './user.entity';
 import { AppEvent } from './event.entity';
@@ -74,6 +75,7 @@ export class Group {
 
   @ManyToMany(() => User, (user) => user.adminGroups)
   @Expose()
+  @JoinTable()
   @Transform(({ obj }) => obj.groupAdmins?.map((user: User) => user.id) || [])
   groupAdmins: User[];
 

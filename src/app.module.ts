@@ -16,6 +16,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Group } from './entities/group.entity';
 import { AppEvent } from './entities/event.entity';
+import { Connection } from './entities/connection.entity';
+import { Notification } from './entities/notification.entity';
 
 @Module({
   imports: [
@@ -32,7 +34,7 @@ import { AppEvent } from './entities/event.entity';
           join(__dirname, '..', 'db.sqlite'),
         ),
         synchronize: true,
-        entities: [User, Group, AppEvent],
+        entities: [User, Group, AppEvent, Connection, Notification],
       }),
     }),
     UsersModule,
@@ -44,6 +46,7 @@ import { AppEvent } from './entities/event.entity';
     EventCommentsModule,
     GroupsModule,
     GroupCommentsModule,
+    ConnectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

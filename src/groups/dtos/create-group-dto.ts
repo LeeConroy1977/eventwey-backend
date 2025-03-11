@@ -9,6 +9,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { User } from 'src/entities/user.entity';
 
 class LocationDto {
   @IsNotEmpty()
@@ -32,7 +33,7 @@ export class CreateGroupDto {
   image: string;
 
   @IsNotEmpty()
-  groupAdmin: number;
+  groupAdmin: User;
 
   @IsArray()
   @IsString({ each: true })

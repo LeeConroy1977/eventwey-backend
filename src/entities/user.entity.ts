@@ -4,10 +4,13 @@ import {
   PrimaryGeneratedColumn,
   ManyToMany,
   JoinTable,
+  OneToMany,
 } from 'typeorm';
 import { Group } from './group.entity';
 import { AppEvent } from './event.entity';
 import { Expose, Transform } from 'class-transformer';
+import { Connection } from './connection.entity';
+import { Notification } from './notification.entity';
 
 @Entity()
 export class User {
@@ -15,7 +18,7 @@ export class User {
   @Expose()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   @Expose()
   email: string;
 
@@ -87,21 +90,37 @@ export class User {
   role: string;
 
   @ManyToMany(() => Group, (group) => group.groupAdmins, { cascade: true })
-  @JoinTable() // Ensures this side owns the join table
   @Transform(
     ({ obj }) => obj.adminGroups?.map((group: Group) => group.id) || [],
   )
   @Expose()
-  adminGroups: number[];
+  adminGroups: Group[];
 
   @ManyToMany(() => Group, (group) => group.members, { cascade: true })
   @JoinTable() // Ensures this side owns the join table
   @Transform(({ obj }) => obj.groups?.map((group: Group) => group.id) || [])
   @Expose()
-  groups: number[];
+  groups: Group[];
 
   @ManyToMany(() => AppEvent, (event) => event.attendees)
   @Transform(({ obj }) => obj.events?.map((event: AppEvent) => event.id) || [])
   @Expose()
   events: Event[];
+
+  @ManyToMany(() => User, (user) => user.connections)
+  @JoinTable({
+    name: 'user_connections',
+    joinColumn: { name: 'userId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'connectionId', referencedColumnName: 'id' },
+  })
+  connections: User[];
+
+  @OneToMany(() => Connection, (connection) => connection.requester)
+  sentConnections: Connection[];
+
+  @OneToMany(() => Connection, (connection) => connection.recipient)
+  receivedConnections: Connection[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 }

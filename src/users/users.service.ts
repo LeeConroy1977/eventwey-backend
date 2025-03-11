@@ -1,13 +1,10 @@
-import {
-  Injectable,
-  forwardRef,
-  Inject,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { plainToInstance } from 'class-transformer';
+
 import { Group } from 'src/entities/group.entity';
 import { User } from 'src/entities/user.entity';
+import { Notification } from 'src/entities/notification.entity';
+
 import { AppEvent } from 'src/entities/event.entity';
 import { EventsService } from 'src/events/events.service';
 import { GroupsService } from 'src/groups/groups.service';
@@ -28,10 +25,10 @@ export class UsersService {
 
   async findAllUsers() {
     const users = await this.repo.find({
-      relations: ['adminGroups', 'events', 'groups'],
+      loadRelationIds: true,
     });
 
-    return plainToInstance(User, users, { strategy: 'excludeAll' });
+    return users;
   }
 
   async createUser(username: string, email: string, password: string) {
@@ -41,25 +38,30 @@ export class UsersService {
   async findUserById(id: number): Promise<User> {
     const user = await this.repo.findOne({
       where: { id },
-      relations: ['adminGroups', 'events', 'groups'],
+      loadRelationIds: true,
     });
 
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return plainToInstance(User, user, { strategy: 'excludeAll' });
+    return user;
   }
   async findUserByEmail(email: string): Promise<User | undefined> {
-    const user = await this.repo.findOneBy({ email });
+    const user = await this.repo.findOne({
+      where: { email },
+      loadRelationIds: true,
+    });
     console.log(user);
     if (!user) return null;
 
     return user;
   }
+
   async findUsersWithEmail(email: string) {
     const users = await this.repo.find({
       where: { email: email },
+      loadRelationIds: true,
     });
 
     if (!users) return null;
@@ -67,32 +69,140 @@ export class UsersService {
     return users;
   }
 
-  async findUserEvents(userId: number): Promise<any[]> {
-    const user = await this.findUserById(userId);
-
-    const userEventsIds = user.events;
-
-    const events = await this.eventsService.findAllEvents();
-
-    const filteredEvents = events.filter((event) =>
-      userEventsIds.includes(event.id),
-    );
-
-    return filteredEvents;
+  async findUserConnections(id: number) {
+    const connections = await this.repo.find({
+      where: {
+        connections: { id },
+      },
+      loadRelationIds: true,
+    });
+    return connections;
   }
 
-  async getAdminGroups(userId: number): Promise<Group[]> {
-    const user = await this.findUserById(userId);
+  async findUserEvents(userId: number, filters: any): Promise<any[]> {
+    const user = await this.repo.findOne({
+      where: { id: userId },
+      loadRelationIds: true,
+    });
 
-    const userAdminIds: number[] = user.adminGroups;
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-    const groups = await this.groupsService.getAllGroups();
+    // Build query
+    const query = this.eventRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.group', 'group')
+      .leftJoin('event.attendees', 'attendee') // Don't select full attendee objects
+      .where('attendee.id = :userId', { userId })
+      .loadAllRelationIds(); // Load relation IDs instead of full objects
 
-    const filteredGroups = groups.filter((group) =>
-      userAdminIds.includes(Number(group.id)),
-    );
+    // Filter by category
+    if (filters.category) {
+      query.andWhere('event.category = :category', {
+        category: filters.category,
+      });
+    }
 
-    return filteredGroups;
+    // Filter by date range
+    if (filters.dateRange) {
+      const today = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      switch (filters.dateRange) {
+        case 'today':
+          startDate = today;
+          endDate = new Date(today);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'tomorrow':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() + 1);
+          endDate = new Date(startDate);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'thisWeek':
+          startDate = today;
+          endDate = new Date(today);
+          endDate.setDate(today.getDate() + (7 - today.getDay())); // End of the week
+          break;
+        case 'nextWeek':
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() + (7 - today.getDay()) + 1);
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 6);
+          break;
+        case 'thisMonth':
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          break;
+        case 'nextMonth':
+          startDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+          break;
+      }
+
+      if (startDate && endDate) {
+        query.andWhere('event.date BETWEEN :startDate AND :endDate', {
+          startDate,
+          endDate,
+        });
+      }
+    }
+
+    // Sorting
+    if (filters.sort === 'oldest') {
+      query.orderBy('event.date', 'ASC');
+    } else if (filters.sort === 'newest') {
+      query.orderBy('event.date', 'DESC');
+    } else if (filters.sort === 'free') {
+      query.andWhere('event.price = 0'); // Assuming free events have price 0
+    }
+
+    // Pagination
+    const limit = filters.limit ? parseInt(filters.limit, 10) : 10;
+    const page = filters.page ? parseInt(filters.page, 10) : 1;
+    query.skip((page - 1) * limit).take(limit);
+
+    const events = await query.getMany();
+
+    return events;
+  }
+
+  async findUserGroups(userId: number): Promise<Group[]> {
+    return this.groupRepository.find({
+      where: {
+        members: {
+          id: userId,
+        },
+      },
+      relations: ['members', 'groupAdmins', 'events'],
+      loadRelationIds: true,
+    });
+  }
+
+  async findAdminGroups(userId: number): Promise<Group[]> {
+    return this.groupRepository.find({
+      where: {
+        groupAdmins: { id: userId },
+      },
+      relations: ['members', 'groupAdmins', 'events'],
+      loadRelationIds: true,
+    });
+  }
+
+  async findUserNotifications(userId: number): Promise<Notification[]> {
+    const user = await this.repo.findOne({
+      where: { id: userId },
+      relations: ['notifications'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return user.notifications;
   }
 
   async updateUser(id: number, attrs: Partial<User>) {
@@ -103,7 +213,11 @@ export class UsersService {
     }
 
     Object.assign(user, attrs);
-    return this.repo.save(user);
+
+    return await this.repo.findOne({
+      where: { id },
+      loadRelationIds: true,
+    });
   }
 
   async removeUser(id: number) {

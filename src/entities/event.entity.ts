@@ -6,6 +6,7 @@ import {
   ManyToMany,
   JoinTable,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Group } from './group.entity';
 import { User } from './user.entity';
@@ -34,9 +35,10 @@ export class AppEvent {
   title: string;
 
   @ManyToOne(() => Group, (group) => group.events, { nullable: false })
+  @JoinColumn({ name: 'groupId' }) // ✅ Ensures a proper foreign key
   @Expose()
-  @Transform(({ value }) => value?.id)
-  group: Group; // Foreign key to Group
+  @Transform(({ value }) => value?.id) // ✅ Only transforms output, not database storage
+  group: Group;
 
   @Column()
   @Expose()

@@ -13,12 +13,16 @@ import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(forwardRef(() => UsersService))
     private usersService: UsersService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -83,7 +87,12 @@ export class AuthService {
       maxAge: 1000 * 60 * 60 * 24,
     });
 
-    return user;
+    return await this.userRepository.findOne({
+      where: {
+        id: user.id,
+      },
+      loadRelationIds: true,
+    });
   }
 
   async signout(req: Request, res: Response) {

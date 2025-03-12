@@ -12,7 +12,7 @@ import { Group } from './group.entity';
 import { User } from './user.entity';
 import { Expose, Transform } from 'class-transformer';
 
-@Entity('events') // Keep the table name the same
+@Entity('events') 
 export class AppEvent {
   @PrimaryGeneratedColumn()
   @Expose()
@@ -24,7 +24,7 @@ export class AppEvent {
 
   @Column()
   @Expose()
-  date: number; // UNIX timestamp
+  date: number; 
 
   @Column()
   @Expose()
@@ -35,9 +35,9 @@ export class AppEvent {
   title: string;
 
   @ManyToOne(() => Group, (group) => group.events, { nullable: false })
-  @JoinColumn({ name: 'groupId' }) // ✅ Ensures a proper foreign key
+  @JoinColumn({ name: 'groupId' }) 
   @Expose()
-  @Transform(({ value }) => value?.id) // ✅ Only transforms output, not database storage
+  @Transform(({ value }) => value?.id) 
   group: Group;
 
   @Column()
@@ -49,8 +49,8 @@ export class AppEvent {
   going: number;
 
   @ManyToMany(() => User, (user) => user.events, { cascade: true })
-  @JoinTable() // Join table to handle many-to-many relationship
-  @Transform(({ obj }) => obj.attendees?.map((attendee: User) => attendee.id)) // Map attendees to IDs
+  @JoinTable() 
+  @Transform(({ obj }) => obj.attendees?.map((attendee: User) => attendee.id)) 
   @Expose()
   attendees: User[];
 

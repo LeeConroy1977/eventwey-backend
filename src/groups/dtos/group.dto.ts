@@ -33,14 +33,14 @@ export class GroupDto {
   };
 
   @Expose()
-  @Type(() => Number) // Ensure only IDs are exposed
+  @Type(() => Number) 
   groupAdmins: number[];
 
   @Expose()
-  @Type(() => Number) // Ensure only IDs are exposed
+  @Type(() => Number) 
   events: number[];
 
   @Expose()
-  @Type(() => Number) // Ensure only IDs are exposed
+  @Type(() => Number) 
   members: number[];
 }

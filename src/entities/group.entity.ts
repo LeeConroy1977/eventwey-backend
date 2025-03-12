@@ -2,8 +2,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
   ManyToMany,
   OneToMany,
@@ -47,8 +45,8 @@ export class Group {
   @Expose()
   openAccess: boolean;
 
-  @Column('json', { nullable: true }) // Define 'location' as a JSON column
-  @Expose() // Make sure location is exposed when transforming
+  @Column('json', { nullable: true }) 
+  @Expose() 
   @Type(() => Location)
   location: {
     placename: string;
@@ -81,5 +79,5 @@ export class Group {
 
   @OneToMany(() => AppEvent, (event) => event.group, { cascade: true })
   @Transform(({ obj }) => obj.events?.map((event: AppEvent) => event.id) || [])
-  events: Event[]; // One-to-many relationship with Event
+  events: Event[]; 
 }

@@ -9,11 +9,11 @@ import { GroupsService } from './groups.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Group, User, AppEvent]), // Register entities for Groups module
-    forwardRef(() => EventsModule), // Import EventsModule to resolve EventRepository
+    TypeOrmModule.forFeature([Group, User, AppEvent]),
+    forwardRef(() => EventsModule), 
   ],
   controllers: [GroupsController],
   providers: [GroupsService],
-  exports: [GroupsService],
+  exports: [GroupsService ],
 })
 export class GroupsModule {}

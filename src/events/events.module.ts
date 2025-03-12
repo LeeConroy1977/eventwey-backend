@@ -12,13 +12,13 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AppEvent, Group, User, Notification]), // Register entities for the Events module
-    forwardRef(() => UsersModule), // Forward ref to avoid circular dependency with UsersModule
-    forwardRef(() => GroupsModule), // Forward ref to avoid circular dependency with GroupsModule
+    TypeOrmModule.forFeature([AppEvent, Group, User, Notification]), 
+    forwardRef(() => UsersModule),
+    forwardRef(() => GroupsModule), 
     forwardRef(() => NotificationsModule),
   ],
   controllers: [EventsController],
   providers: [EventsService],
-  exports: [EventsService], // Export EventsService to make it available in other modules
+  exports: [EventsService], 
 })
 export class EventsModule {}

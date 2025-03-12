@@ -116,8 +116,8 @@ export class ConnectionsService {
   async findUserRequests(userId: number) {
     const requests = await this.connectionRepository.find({
       where: {
-        recipient: { id: userId }, // Find requests sent *to* this user
-        status: 'pending', // Only fetch pending requests
+        recipient: { id: userId }, 
+        status: 'pending', 
       },
       relations: [
         'requester',
@@ -127,10 +127,9 @@ export class ConnectionsService {
         'requester.adminGroups',
       ],
 
-      // Load the sender of each request
     });
 
-    // Return only an array of users who sent the requests
+  
     return requests.map((connection) => connection.requester);
   }
 
@@ -152,19 +151,16 @@ export class ConnectionsService {
     recipientIds: number[],
     eventId: number,
   ) {
-    // Find the sender
     const sender = await this.userRepository.findOne({
       where: { id: senderId },
     });
     if (!sender) throw new NotFoundException('Sender not found');
 
-    // Find the event
     const event = await this.eventRepository.findOne({
       where: { id: eventId },
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // Find the recipients
     const recipients = await this.userRepository.find({
       where: { id: In(recipientIds) },
     });
@@ -172,7 +168,6 @@ export class ConnectionsService {
       throw new BadRequestException('One or more recipients not found');
     }
 
-    // Create and save notifications for each recipient
 
     for (const recipient of recipients) {
       await this.notificationsService.createNotification(

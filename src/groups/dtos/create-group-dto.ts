@@ -46,7 +46,7 @@ export class CreateGroupDto {
 
   @IsOptional()
   @IsObject()
-  @Type(() => LocationDto) // Ensure the LocationDto transformation is applied
+  @Type(() => LocationDto) 
   location?: {
     placename: string;
     lat: number;

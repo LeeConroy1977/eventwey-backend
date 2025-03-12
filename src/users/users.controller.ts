@@ -21,8 +21,6 @@ import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { Request, response } from 'express';
 import { ResponseUserDto } from './dtos/response-user-dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
-import { Group } from 'src/entities/group.entity';
-import { UserDto } from './dtos/user-dto';
 import { UpdateUserDto } from './dtos/update-user-dto';
 import { User } from 'src/entities/user.entity';
 import { Notification } from 'src/entities/notification.entity';

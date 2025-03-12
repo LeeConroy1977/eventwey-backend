@@ -21,7 +21,7 @@ export class EventsService {
     private readonly repo: Repository<AppEvent>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Group) // Inject UserRepository
+    @InjectRepository(Group) 
     private readonly groupRepository: Repository<Group>,
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
@@ -32,7 +32,6 @@ export class EventsService {
       loadRelationIds: true,
     });
 
-    // const plainEvents = events.map((event) => classToPlain(event));
 
     return events;
   }
@@ -83,15 +82,19 @@ export class EventsService {
   }
 
   async createEvent(body: CreateEventDto) {
+    const groupId = body.group;
+    const group = await this.groupService.findGroupById(groupId);
+
     const newEvent = await this.repo.create({
       ...body,
+      group,
 
       attendees: [],
     });
 
-    const groupId = body.group;
+    
 
-    const group = await this.groupService.findGroupById(groupId);
+    
 
     console.log(group);
 
@@ -261,7 +264,7 @@ export class EventsService {
   ): Promise<{ message: string }> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group'], // Ensure we get the group relation
+      relations: ['group'], 
     });
 
     if (!event) {
@@ -272,12 +275,12 @@ export class EventsService {
       throw new NotFoundException(`Event does not belong to a group`);
     }
 
-    const groupId = event.group.id; // Assuming event.group is just the ID now, not a full object
+    const groupId = event.group.id; 
 
-    // Fetch group with groupAdmins properly
+
     const group = await this.groupRepository.findOne({
       where: { id: groupId },
-      relations: ['groupAdmins'], // This should now return just an array of user IDs
+      relations: ['groupAdmins'],
     });
 
     if (!group) {

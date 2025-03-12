@@ -11,6 +11,8 @@ import { AppEvent } from './event.entity';
 import { Expose, Transform } from 'class-transformer';
 import { Connection } from './connection.entity';
 import { Notification } from './notification.entity';
+import { Comment } from './comment.entity';
+import { Like } from './like.entity';
 
 @Entity()
 export class User {
@@ -27,13 +29,13 @@ export class User {
   username: string;
 
   @Column({ nullable: true })
-  password: string; // Nullable because Google users won't have a password.
+  password: string; 
 
   @Column({ nullable: true })
   @Expose()
-  googleId: string; // Stores the Google user ID.
+  googleId: string; 
 
-  @Column({ default: 'email' }) // 'email' | 'google'
+  @Column({ default: 'email' }) 
   @Expose()
   authMethod: string;
 
@@ -97,7 +99,7 @@ export class User {
   adminGroups: Group[];
 
   @ManyToMany(() => Group, (group) => group.members, { cascade: true })
-  @JoinTable() // Ensures this side owns the join table
+  @JoinTable() 
   @Transform(({ obj }) => obj.groups?.map((group: Group) => group.id) || [])
   @Expose()
   groups: Group[];
@@ -123,4 +125,10 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  @OneToMany(() => Comment, (comment) => comment.user)
+  comments: Comment[]
+
+  @OneToMany(() => Like, (like) => like.user)
+  likes: Like[];
 }

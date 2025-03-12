@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import { Connection } from 'src/entities/connection.entity';
 import { AppEvent } from 'src/entities/event.entity';
 import { Group } from 'src/entities/group.entity';
+import { Like } from 'src/entities/like.entity';
 import { User } from 'src/entities/user.entity';
 
 export class ResponseUserDto {
@@ -81,10 +82,16 @@ export class ResponseUserDto {
   notifications: Notification[];
 
   @Expose()
-  @Type(() => ResponseUserDto) // Ensure serialization of the nested object
+  comments: Comment[]
+
+  @Expose()
+  likes: Like[]
+
+  @Expose()
+  @Type(() => ResponseUserDto) 
   requester: ResponseUserDto;
 
   @Expose()
-  @Type(() => ResponseUserDto) // Ensure serialization of the nested object
+  @Type(() => ResponseUserDto)
   recipient: ResponseUserDto;
 }

@@ -7,9 +7,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ConnectionsModule } from './connections/connections.module';
 import { MessagesModule } from './messages/messages.module';
 import { EventsModule } from './events/events.module';
-import { EventCommentsModule } from './event-comments/event-comments.module';
 import { GroupsModule } from './groups/groups.module';
-import { GroupCommentsModule } from './group-comments/group-comments.module';
 import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +16,9 @@ import { Group } from './entities/group.entity';
 import { AppEvent } from './entities/event.entity';
 import { Connection } from './entities/connection.entity';
 import { Notification } from './entities/notification.entity';
+import { CommentsModule } from './comments/comments.module';
+import { Comment } from './entities/comment.entity';
+import { Like } from './entities/like.entity';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { Notification } from './entities/notification.entity';
           join(__dirname, '..', 'db.sqlite'),
         ),
         synchronize: true,
-        entities: [User, Group, AppEvent, Connection, Notification],
+        entities: [User, Group, AppEvent, Connection, Notification, Comment,Like],
       }),
     }),
     UsersModule,
@@ -43,10 +44,9 @@ import { Notification } from './entities/notification.entity';
     ConnectionsModule,
     MessagesModule,
     EventsModule,
-    EventCommentsModule,
     GroupsModule,
-    GroupCommentsModule,
     ConnectionsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

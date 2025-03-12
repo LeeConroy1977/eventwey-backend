@@ -14,17 +14,17 @@ export class Notification {
   id: number;
 
   @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' }) // ✅ Ensure correct mapping
+  @JoinColumn({ name: 'userId' }) 
   user: User;
 
   @Column()
-  userId: number; // ✅ Store user ID separately
+  userId: number; 
 
   @Column()
   senderId: number;
 
   @Column()
-  type: string; // e.g., "event-invite", "event-attendance"
+  type: string; 
 
   @Column()
   message: string;
@@ -33,7 +33,7 @@ export class Notification {
   eventId: number;
 
   @Column({ default: false })
-  isRead: boolean; // Mark if the user has seen the notification
+  isRead: boolean; 
 
   @CreateDateColumn()
   createdAt: Date;

@@ -17,10 +17,9 @@ export class UsersService {
     private readonly repo: Repository<User>,
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
-    @InjectRepository(AppEvent) // Ensure this matches the AppEvent entity
-    private readonly eventRepository: Repository<AppEvent>, // Correct type here
-    private readonly groupsService: GroupsService,
-    private readonly eventsService: EventsService,
+    @InjectRepository(AppEvent) 
+    private readonly eventRepository: Repository<AppEvent>, 
+
   ) {}
 
   async findAllUsers() {
@@ -38,6 +37,7 @@ export class UsersService {
   async findUserById(id: number): Promise<User> {
     const user = await this.repo.findOne({
       where: { id },
+      relations: ['comments'],
       loadRelationIds: true,
     });
 
@@ -93,18 +93,17 @@ export class UsersService {
     const query = this.eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
-      .leftJoin('event.attendees', 'attendee') // Don't select full attendee objects
+      .leftJoin('event.attendees', 'attendee') 
       .where('attendee.id = :userId', { userId })
-      .loadAllRelationIds(); // Load relation IDs instead of full objects
+      .loadAllRelationIds(); 
 
-    // Filter by category
+  
     if (filters.category) {
       query.andWhere('event.category = :category', {
         category: filters.category,
       });
     }
 
-    // Filter by date range
     if (filters.dateRange) {
       const today = new Date();
       let startDate: Date | null = null;
@@ -125,7 +124,7 @@ export class UsersService {
         case 'thisWeek':
           startDate = today;
           endDate = new Date(today);
-          endDate.setDate(today.getDate() + (7 - today.getDay())); // End of the week
+          endDate.setDate(today.getDate() + (7 - today.getDay())); 
           break;
         case 'nextWeek':
           startDate = new Date(today);
@@ -157,7 +156,7 @@ export class UsersService {
     } else if (filters.sort === 'newest') {
       query.orderBy('event.date', 'DESC');
     } else if (filters.sort === 'free') {
-      query.andWhere('event.price = 0'); // Assuming free events have price 0
+      query.andWhere('event.price = 0'); 
     }
 
     // Pagination

@@ -18,11 +18,11 @@ class LocationDto {
 
   @IsNotEmpty()
   @IsNumber()
-  lng: number; // Validate as a number
+  lng: number; 
 
   @IsNotEmpty()
   @IsNumber()
-  lat: number; // Validate as a number
+  lat: number; 
 }
 
 class PriceBandsDto {
@@ -58,7 +58,7 @@ export class CreateEventDto {
 
   @IsNotEmpty()
   @IsNumber()
-  group: Group;
+  group: number;
 
   @IsNotEmpty()
   @IsString()
@@ -96,14 +96,14 @@ export class CreateEventDto {
 
   @IsOptional()
   @IsObject()
-  @Type(() => LocationDto) // Ensure the LocationDto transformation is applied
+  @Type(() => LocationDto)
   location?: {
     placename: string;
     lat: number;
     lng: number;
   };
 
-  @ValidateNested({ each: true }) // Validates each item in the array
+  @ValidateNested({ each: true }) 
   @Type(() => PriceBandsDto)
   @IsArray()
   @IsOptional()

@@ -140,16 +140,16 @@ export class GroupsService {
       throw new BadRequestException('User is already a member of this group');
     }
 
-    // ✅ Add user object to the members array
+
     group.members.push(user);
 
-    // ✅ Save the updated group directly
+
     await this.groupRepository.save(group);
 
-    // ✅ Reload group with only relation IDs to return
+
     return await this.groupRepository.findOne({
       where: { id: group.id },
-      loadRelationIds: true, // Returns only IDs for relations
+      loadRelationIds: true, 
     });
   }
 

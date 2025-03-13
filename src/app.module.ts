@@ -19,6 +19,7 @@ import { Notification } from './entities/notification.entity';
 import { CommentsModule } from './comments/comments.module';
 import { Comment } from './entities/comment.entity';
 import { Like } from './entities/like.entity';
+import { Message } from './entities/message.entity';
 
 @Module({
   imports: [
@@ -35,7 +36,7 @@ import { Like } from './entities/like.entity';
           join(__dirname, '..', 'db.sqlite'),
         ),
         synchronize: true,
-        entities: [User, Group, AppEvent, Connection, Notification, Comment,Like],
+        entities: [User, Group, AppEvent, Connection, Notification, Comment,Like, Message],
       }),
     }),
     UsersModule,

@@ -3,6 +3,7 @@ import { Connection } from 'src/entities/connection.entity';
 import { AppEvent } from 'src/entities/event.entity';
 import { Group } from 'src/entities/group.entity';
 import { Like } from 'src/entities/like.entity';
+import { Message } from 'src/entities/message.entity';
 import { User } from 'src/entities/user.entity';
 
 export class ResponseUserDto {
@@ -94,4 +95,10 @@ export class ResponseUserDto {
   @Expose()
   @Type(() => ResponseUserDto)
   recipient: ResponseUserDto;
+
+  @Expose()
+    sentMessages: Message[];
+  
+    @Expose()
+    receivedMessages: Message[];
 }

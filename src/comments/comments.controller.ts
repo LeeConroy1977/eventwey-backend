@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { Comment } from 'src/entities/comment.entity';
 import { CreateCommentDto } from './dtos/create-comment-dto';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { UpdateCommentDto } from './dtos/update-comment-dto';
 import { ReplyToCommentDto } from './dtos/reply-to-comment.dto';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+
+
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
@@ -21,6 +24,8 @@ export class CommentsController {
 const userId = req.user.id
 return  await this.commentsService.createComment(userId, body)
   }
+
+
   @UseGuards(JwtAuthGuard)
   @Post(':commentId/reply')
   async replyToComment(@Param('commentId', ParseIntPipe ) commentId: number, @Body() body: ReplyToCommentDto, @Req() req: AuthenticatedRequest): Promise<Comment> {
@@ -28,14 +33,23 @@ return  await this.commentsService.createComment(userId, body)
     return await this.commentsService.replyToComment(commentId, userId, body)
   }
 
+ 
   @Get('event/:eventId')
-  async getCommentsForEvent(@Param('eventId', ParseIntPipe) eventId: number) {
-    return this.commentsService.getCommentsForEvent(eventId)
+  async getEventComments(
+      @Param('eventId') eventId: number,
+       @Query('page') page: string = '1', 
+    @Query('limit') limit: string = '4'
+  ) {
+      return this.commentsService.getCommentsForEvent(eventId, Number(page), Number(limit));
   }
 
   @Get('group/:groupId')
-  async getCommentsForGroup(@Param('groupId', ParseIntPipe) groupId: number) {
-    return this.commentsService.getCommentsForGroup(groupId)
+  async getgroupComments(
+      @Param('groupId') groupId: number,
+       @Query('page') page: string = '1', 
+    @Query('limit') limit: string = '4'
+  ) {
+      return this.commentsService.getCommentsForEvent(groupId, Number(page), Number(limit));
   }
 
   @Get(':commentId/replies')

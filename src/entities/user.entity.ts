@@ -13,6 +13,7 @@ import { Connection } from './connection.entity';
 import { Notification } from './notification.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
+import { Message } from './message.entity';
 
 @Entity()
 export class User {
@@ -131,4 +132,10 @@ export class User {
 
   @OneToMany(() => Like, (like) => like.user)
   likes: Like[];
+
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages: Message[];
+
+  @OneToMany(() => Message, (message) => message.recipient)
+  receivedMessages: Message[];
 }

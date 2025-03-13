@@ -10,10 +10,11 @@ import { Connection } from 'src/entities/connection.entity';
 import { AppEvent } from 'src/entities/event.entity';
 import { EventsModule } from 'src/events/events.module';
 import { UsersModule } from 'src/users/users.module';
+import { Message } from 'src/entities/message.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, User, AppEvent, Group, Connection]),
+    TypeOrmModule.forFeature([Notification, User, AppEvent, Group, Connection, Message]),
     forwardRef(() => UsersModule),
     forwardRef(() => EventsModule),
   ],

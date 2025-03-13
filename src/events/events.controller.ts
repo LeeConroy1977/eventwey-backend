@@ -30,8 +30,22 @@ export class EventsController {
   }
 
   @Get()
-  async findAllEvents() {
-    return await this.eventsService.findAllEvents();
+  async findAllEvents(
+    @Query('date') date: string,
+    @Query('category') category: string,
+    @Query('sortBy') sortBy: string,
+    @Query('limit') limit: string,
+    @Query('page') page: string,
+  ) {
+    const limitNumber =
+      isNaN(Number(limit)) || Number(limit) <= 0 ? 15 : Number(limit);
+    const pageNumber =
+      isNaN(Number(page)) || Number(page) <= 0 ? 1 : Number(page);
+
+    return this.eventsService.findAllEvents(
+      { date, category, sortBy },
+      { limit: limitNumber, page: pageNumber },
+    );
   }
 
   @Get('/:id')

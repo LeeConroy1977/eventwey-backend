@@ -50,13 +50,50 @@ export class GroupsService {
     });
   }
 
-  async findAllGroups(): Promise<Group[]> {
-    const groups = await this.groupRepository.find({
+  async findAllGroups(pagination: {
+    limit: number;
+    page: number;
+    category?: string;
+    sortBy?: string;
+  }): Promise<Group[]> {
+    let { limit, page, category, sortBy } = pagination;
+
+    limit = limit || 15;
+    page = page || 1;
+
+    const skip = (page - 1) * limit;
+
+    const queryOptions: any = {
+      skip: skip,
+      take: limit,
       loadRelationIds: true,
-    });
+    };
+
+    if (category) {
+      queryOptions.where = { category };
+    }
+
+    if (sortBy) {
+      switch (sortBy) {
+        case 'latest':
+          queryOptions.order = { createdAt: 'DESC' };
+          break;
+        case 'popular':
+          queryOptions.order = { usersCount: 'DESC' };
+          break;
+        case 'alphabetical':
+          queryOptions.order = { name: 'ASC' };
+          break;
+        default:
+          break;
+      }
+    }
+
+    const groups = await this.groupRepository.find(queryOptions);
 
     return groups;
   }
+
   async findGroupById(id: number): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id },
@@ -140,16 +177,13 @@ export class GroupsService {
       throw new BadRequestException('User is already a member of this group');
     }
 
-
     group.members.push(user);
-
 
     await this.groupRepository.save(group);
 
-
     return await this.groupRepository.findOne({
       where: { id: group.id },
-      loadRelationIds: true, 
+      loadRelationIds: true,
     });
   }
 

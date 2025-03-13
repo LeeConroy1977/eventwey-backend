@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Req,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 
@@ -44,8 +45,24 @@ export class GroupsController {
   }
 
   @Get()
-  async findAllGroups(): Promise<Group[]> {
-    return this.groupsService.findAllGroups();
+  async findAllGroups(
+    @Query('limit') limit: string = '15', 
+    @Query('page') page: string = '1', 
+    @Query('category') category?: string,
+    @Query('sortBy') sortBy?: string, 
+  ) {
+   
+    const limitNumber =
+      isNaN(Number(limit)) || Number(limit) <= 0 ? 15 : Number(limit);
+    const pageNumber =
+      isNaN(Number(page)) || Number(page) <= 0 ? 1 : Number(page);
+
+    return this.groupsService.findAllGroups({
+      category,
+      sortBy,
+      limit: limitNumber,
+      page: pageNumber,
+    });
   }
 
   @Get('/:id')

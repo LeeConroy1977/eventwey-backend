@@ -21,17 +21,111 @@ export class EventsService {
     private readonly repo: Repository<AppEvent>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Group) 
+    @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
   ) {}
 
-  async findAllEvents() {
+  async findAllEvents(
+    filters: { date?: string; category?: string; sortBy?: string },
+    pagination: { limit: number; page: number },
+  ) {
+    const { date, category, sortBy } = filters;
+    let { limit = 12, page = 1 } = pagination;
+
+    const whereConditions: any = {};
+
+    if (date) {
+      const today = new Date();
+      let startDate: Date;
+      let endDate: Date;
+
+      switch (date) {
+        case 'today':
+          startDate = new Date(today.setHours(0, 0, 0, 0));
+          endDate = new Date(today.setHours(23, 59, 59, 999));
+          whereConditions.date = { $gte: startDate, $lte: endDate };
+          break;
+        case 'tomorrow':
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          startDate = new Date(tomorrow.setHours(0, 0, 0, 0));
+          endDate = new Date(tomorrow.setHours(23, 59, 59, 999));
+          whereConditions.date = { $gte: startDate, $lte: endDate };
+          break;
+        case 'thisweek':
+          const startOfWeek = new Date();
+          startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          whereConditions.date = { $gte: startOfWeek, $lte: endOfWeek };
+          break;
+        case 'nextweek':
+          const nextWeek = new Date();
+          nextWeek.setDate(nextWeek.getDate() + 7);
+          const startOfNextWeek = new Date(nextWeek);
+          startOfNextWeek.setDate(
+            startOfNextWeek.getDate() - startOfNextWeek.getDay(),
+          );
+          const endOfNextWeek = new Date(startOfNextWeek);
+          endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+          whereConditions.date = { $gte: startOfNextWeek, $lte: endOfNextWeek };
+          break;
+        case 'thismonth':
+          const startOfMonth = new Date();
+          startOfMonth.setDate(1);
+          const endOfMonth = new Date(startOfMonth);
+          endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+          whereConditions.date = { $gte: startOfMonth, $lte: endOfMonth };
+          break;
+        case 'nextmonth':
+          const nextMonth = new Date();
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+          const startOfNextMonth = new Date(nextMonth);
+          startOfNextMonth.setDate(1);
+          const endOfNextMonth = new Date(startOfNextMonth);
+          endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
+          whereConditions.date = {
+            $gte: startOfNextMonth,
+            $lte: endOfNextMonth,
+          };
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (category) {
+      whereConditions.category = category;
+    }
+
+    let order: any;
+    switch (sortBy) {
+      case 'latest':
+        order = { date: 'DESC' };
+        break;
+      case 'popular':
+        order = { popularity: 'DESC' };
+        break;
+      case 'free':
+        whereConditions.price = 'Free';
+        order = { date: 'ASC' };
+        break;
+      default:
+        order = { date: 'ASC' };
+        break;
+    }
+
+    const skip = (page - 1) * limit;
+
     const events = await this.repo.find({
+      where: whereConditions,
+      order: order,
+      skip: skip,
+      take: limit,
       loadRelationIds: true,
     });
-
 
     return events;
   }
@@ -91,10 +185,6 @@ export class EventsService {
 
       attendees: [],
     });
-
-    
-
-    
 
     console.log(group);
 
@@ -264,7 +354,7 @@ export class EventsService {
   ): Promise<{ message: string }> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group'], 
+      relations: ['group'],
     });
 
     if (!event) {
@@ -275,8 +365,7 @@ export class EventsService {
       throw new NotFoundException(`Event does not belong to a group`);
     }
 
-    const groupId = event.group.id; 
-
+    const groupId = event.group.id;
 
     const group = await this.groupRepository.findOne({
       where: { id: groupId },

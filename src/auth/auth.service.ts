@@ -100,7 +100,34 @@ export class AuthService {
     return res.send({ message: 'Logged out successfully' });
   }
 
-  // Helper functions
+  async validateGoogleUser(user: any) {
+    let existingUser: User | null = await this.usersService.findUserByGoogleId(
+      user.googleId,
+    );
+
+    if (!existingUser) {
+      const newUser = this.userRepository.create({
+        username: user.displayName || `${user.given_name} ${user.family_name}`,
+        email: user.email,
+        googleId: user.googleId,
+        authMethod: 'google',
+        profileImage:
+          user.photos && user.photos[0] ? user.photos[0].value : null,
+      });
+
+      const savedUser = await this.userRepository.save(newUser);
+
+      if (Array.isArray(savedUser)) {
+        existingUser = savedUser[0];
+      } else {
+        existingUser = savedUser;
+      }
+    }
+
+    const token = this.jwtService.sign({ userId: existingUser.id });
+
+    return { user: existingUser, token };
+  }
 
   async hashPassword(password: string) {
     const saltRounds = 10;

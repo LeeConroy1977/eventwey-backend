@@ -17,9 +17,8 @@ export class UsersService {
     private readonly repo: Repository<User>,
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
-    @InjectRepository(AppEvent) 
-    private readonly eventRepository: Repository<AppEvent>, 
-
+    @InjectRepository(AppEvent)
+    private readonly eventRepository: Repository<AppEvent>,
   ) {}
 
   async findAllUsers() {
@@ -47,12 +46,16 @@ export class UsersService {
 
     return user;
   }
+
+  async findUserByGoogleId(googleId: string): Promise<User | null> {
+    return this.repo.findOne({ where: { googleId }, loadRelationIds: true });
+  }
+
   async findUserByEmail(email: string): Promise<User | undefined> {
     const user = await this.repo.findOne({
       where: { email },
       loadRelationIds: true,
     });
-    console.log(user);
     if (!user) return null;
 
     return user;
@@ -93,11 +96,10 @@ export class UsersService {
     const query = this.eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
-      .leftJoin('event.attendees', 'attendee') 
+      .leftJoin('event.attendees', 'attendee')
       .where('attendee.id = :userId', { userId })
-      .loadAllRelationIds(); 
+      .loadAllRelationIds();
 
-  
     if (filters.category) {
       query.andWhere('event.category = :category', {
         category: filters.category,
@@ -124,7 +126,7 @@ export class UsersService {
         case 'thisWeek':
           startDate = today;
           endDate = new Date(today);
-          endDate.setDate(today.getDate() + (7 - today.getDay())); 
+          endDate.setDate(today.getDate() + (7 - today.getDay()));
           break;
         case 'nextWeek':
           startDate = new Date(today);
@@ -156,7 +158,7 @@ export class UsersService {
     } else if (filters.sort === 'newest') {
       query.orderBy('event.date', 'DESC');
     } else if (filters.sort === 'free') {
-      query.andWhere('event.price = 0'); 
+      query.andWhere('event.price = 0');
     }
 
     // Pagination

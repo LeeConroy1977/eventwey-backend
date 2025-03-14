@@ -3,7 +3,16 @@ import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 
+import * as dotenv from 'dotenv';
+
+
 async function bootstrap() {
+  if (process.env.NODE_ENV === 'production') {
+    dotenv.config({ path: '.env.production' });
+  } else {
+    dotenv.config({ path: '.env.development' });
+  }
+
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

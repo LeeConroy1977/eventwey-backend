@@ -94,11 +94,9 @@ export class AuthController {
       username,
     });
 
-
     const userDto = plainToClass(ResponseUserDto, user, {
       excludeExtraneousValues: true,
     });
-
 
     return res.json({ token, user: userDto });
   }

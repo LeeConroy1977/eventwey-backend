@@ -4,7 +4,11 @@ import * as cookieParser from 'cookie-parser';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 
+const env = process.env.NODE_ENV || 'development';
+
+dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) });
 
 async function bootstrap() {
   if (process.env.NODE_ENV === 'production') {

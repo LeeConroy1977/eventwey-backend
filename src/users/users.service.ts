@@ -72,9 +72,6 @@ export class UsersService {
     return users;
   }
 
-  async findUserByGoogleId(googleId: string): Promise<User | null> {
-    return this.repo.findOne({ where: { googleId }, loadRelationIds: true });
-  }
 
   async findUserConnections(id: number) {
     const connections = await this.repo.find({

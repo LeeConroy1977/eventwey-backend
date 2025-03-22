@@ -15,15 +15,15 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { AuthService } from 'src/auth/auth.service';
+import { AuthService } from '../auth/auth.service';
 import { UsersService } from './users.service';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { Serialize } from '../interceptors/serialize.interceptor';
 import { Request, response } from 'express';
 import { ResponseUserDto } from './dtos/response-user-dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { UpdateUserDto } from './dtos/update-user-dto';
-import { User } from 'src/entities/user.entity';
-import { Notification } from 'src/entities/notification.entity';
+import { User } from '../entities/user.entity';
+import { Notification } from '../entities/notification.entity';
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };

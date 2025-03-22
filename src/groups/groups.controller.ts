@@ -12,14 +12,14 @@ import {
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 
-import { Group } from 'src/entities/group.entity';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { Group } from '../entities/group.entity';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CreateGroupDto } from './dtos/create-group-dto';
 import { Request } from 'express';
-import { User } from 'src/entities/user.entity';
-import { AppEvent } from 'src/entities/event.entity';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
-import { ResponseUserDto } from 'src/users/dtos/response-user-dto';
+import { User } from '../entities/user.entity';
+import { AppEvent } from '../entities/event.entity';
+import { Serialize } from '../interceptors/serialize.interceptor';
+import { ResponseUserDto } from '../users/dtos/response-user-dto';
 
 export interface AuthenticatedUser {
   id: number;
@@ -46,12 +46,11 @@ export class GroupsController {
 
   @Get()
   async findAllGroups(
-    @Query('limit') limit: string = '15', 
-    @Query('page') page: string = '1', 
+    @Query('limit') limit: string = '15',
+    @Query('page') page: string = '1',
     @Query('category') category?: string,
-    @Query('sortBy') sortBy?: string, 
+    @Query('sortBy') sortBy?: string,
   ) {
-   
     const limitNumber =
       isNaN(Number(limit)) || Number(limit) <= 0 ? 15 : Number(limit);
     const pageNumber =

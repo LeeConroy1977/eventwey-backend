@@ -5,14 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Comment } from 'src/entities/comment.entity';
+import { Comment } from '../entities/comment.entity';
 import { Repository } from 'typeorm';
 import { CreateCommentDto } from './dtos/create-comment-dto';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { UpdateCommentDto } from './dtos/update-comment-dto';
 import { ReplyToCommentDto } from './dtos/reply-to-comment.dto';
-import { NotificationsService } from 'src/notifications/notifications.service';
-import { Like } from 'src/entities/like.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Like } from '../entities/like.entity';
 import { plainToClass } from 'class-transformer';
 
 @Injectable()

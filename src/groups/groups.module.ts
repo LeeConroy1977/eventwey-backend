@@ -1,19 +1,19 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Group } from 'src/entities/group.entity';
-import { User } from 'src/entities/user.entity';
-import { AppEvent } from 'src/entities/event.entity';
-import { EventsModule } from 'src/events/events.module';
+import { Group } from '../entities/group.entity';
+import { User } from '../entities/user.entity';
+import { AppEvent } from '../entities/event.entity';
+import { EventsModule } from '../events/events.module';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Group, User, AppEvent]),
-    forwardRef(() => EventsModule), 
+    forwardRef(() => EventsModule),
   ],
   controllers: [GroupsController],
   providers: [GroupsService],
-  exports: [GroupsService ],
+  exports: [GroupsService],
 })
 export class GroupsModule {}

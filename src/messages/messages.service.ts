@@ -5,15 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Message } from 'src/entities/message.entity';
+import { Message } from '../entities/message.entity';
 import { Repository } from 'typeorm';
 import { CreateMessageDto } from './dtos/create-message-dto';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { plainToClass } from 'class-transformer';
 import { MessageResponseDto } from './dtos/message-response-dto';
-import { Connection } from 'src/entities/connection.entity';
-import { User } from 'src/entities/user.entity';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { Connection } from '../entities/connection.entity';
+import { User } from '../entities/user.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {

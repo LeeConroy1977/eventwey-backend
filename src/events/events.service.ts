@@ -5,14 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AppEvent } from 'src/entities/event.entity';
+import { AppEvent } from '../entities/event.entity';
 import { Repository } from 'typeorm';
 import { CreateEventDto } from './dtos/create-event-dto';
-import { User } from 'src/entities/user.entity';
+import { User } from '../entities/user.entity';
 import { classToPlain } from 'class-transformer';
-import { Group } from 'src/entities/group.entity';
-import { GroupsService } from 'src/groups/groups.service';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { Group } from '../entities/group.entity';
+import { GroupsService } from '../groups/groups.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EventsService {

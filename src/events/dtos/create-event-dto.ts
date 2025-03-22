@@ -9,7 +9,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Group } from 'src/entities/group.entity';
+import { Group } from '../../entities/group.entity';
 
 class LocationDto {
   @IsNotEmpty()
@@ -18,11 +18,11 @@ class LocationDto {
 
   @IsNotEmpty()
   @IsNumber()
-  lng: number; 
+  lng: number;
 
   @IsNotEmpty()
   @IsNumber()
-  lat: number; 
+  lat: number;
 }
 
 class PriceBandsDto {
@@ -103,7 +103,7 @@ export class CreateEventDto {
     lng: number;
   };
 
-  @ValidateNested({ each: true }) 
+  @ValidateNested({ each: true })
   @Type(() => PriceBandsDto)
   @IsArray()
   @IsOptional()

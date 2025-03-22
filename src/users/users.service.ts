@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Group } from 'src/entities/group.entity';
-import { User } from 'src/entities/user.entity';
-import { Notification } from 'src/entities/notification.entity';
+import { Group } from '../entities/group.entity';
+import { User } from '../entities/user.entity';
+import { Notification } from '../entities/notification.entity';
 
-import { AppEvent } from 'src/entities/event.entity';
-import { EventsService } from 'src/events/events.service';
-import { GroupsService } from 'src/groups/groups.service';
+import { AppEvent } from '../entities/event.entity';
+import { EventsService } from '../events/events.service';
+import { GroupsService } from '../groups/groups.service';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -71,7 +71,6 @@ export class UsersService {
 
     return users;
   }
-
 
   async findUserConnections(id: number) {
     const connections = await this.repo.find({

@@ -9,7 +9,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { User } from 'src/entities/user.entity';
+import { User } from '../../entities/user.entity';
 
 class LocationDto {
   @IsNotEmpty()
@@ -46,7 +46,7 @@ export class CreateGroupDto {
 
   @IsOptional()
   @IsObject()
-  @Type(() => LocationDto) 
+  @Type(() => LocationDto)
   location?: {
     placename: string;
     lat: number;

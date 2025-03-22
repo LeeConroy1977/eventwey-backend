@@ -5,13 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Connection } from 'src/entities/connection.entity';
-import { User } from 'src/entities/user.entity';
-import { NotificationsGateway } from 'src/notifications/notifications.gateway';
-import { NotificationsService } from 'src/notifications/notifications.service';
-import { UsersService } from 'src/users/users.service';
-import { Notification } from 'src/entities/notification.entity';
-import { AppEvent } from 'src/entities/event.entity';
+import { Connection } from '../entities/connection.entity';
+import { User } from '../entities/user.entity';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { Notification } from '../entities/notification.entity';
+import { AppEvent } from '../entities/event.entity';
 
 @Injectable()
 export class ConnectionsService {
@@ -116,8 +116,8 @@ export class ConnectionsService {
   async findUserRequests(userId: number) {
     const requests = await this.connectionRepository.find({
       where: {
-        recipient: { id: userId }, 
-        status: 'pending', 
+        recipient: { id: userId },
+        status: 'pending',
       },
       relations: [
         'requester',
@@ -126,10 +126,8 @@ export class ConnectionsService {
         'requester.groups',
         'requester.adminGroups',
       ],
-
     });
 
-  
     return requests.map((connection) => connection.requester);
   }
 
@@ -167,7 +165,6 @@ export class ConnectionsService {
     if (recipients.length !== recipientIds.length) {
       throw new BadRequestException('One or more recipients not found');
     }
-
 
     for (const recipient of recipients) {
       await this.notificationsService.createNotification(

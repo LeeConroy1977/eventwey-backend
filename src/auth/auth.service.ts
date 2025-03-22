@@ -7,9 +7,8 @@ import {
   forwardRef,
   Inject,
 } from '@nestjs/common';
-import { User } from 'src/entities/user.entity';
-import { CreateUserDto } from 'src/auth/dtos/create-user-dto';
-import { UsersService } from 'src/users/users.service';
+import { User } from '../entities/user.entity';
+import { UsersService } from '..//users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';

@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsArray, IsNumber, IsString } from 'class-validator';
-import { AppEvent } from 'src/entities/event.entity';
-import { Group } from 'src/entities/group.entity';
+import { AppEvent } from '../../entities/event.entity';
+import { Group } from '../../entities/group.entity';
 
 export class UserDto {
   @IsNumber()

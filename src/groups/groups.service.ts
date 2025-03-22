@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Group } from 'src/entities/group.entity';
+import { Group } from '../entities/group.entity';
 
-import { User } from 'src/entities/user.entity';
+import { User } from '../entities/user.entity';
 import { CreateGroupDto } from './dtos/create-group-dto';
-import { AppEvent } from 'src/entities/event.entity';
+import { AppEvent } from '../entities/event.entity';
 
 @Injectable()
 export class GroupsService {

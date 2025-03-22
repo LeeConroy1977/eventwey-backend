@@ -11,10 +11,10 @@ import {
   ParseArrayPipe,
 } from '@nestjs/common';
 import { ConnectionsService } from './connections.service';
-import { ResponseUserDto } from 'src/users/dtos/response-user-dto';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { ResponseUserDto } from '../users/dtos/response-user-dto';
+import { Serialize } from '../interceptors/serialize.interceptor';
 import { Request } from 'express';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };

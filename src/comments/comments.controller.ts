@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CommentsService } from './comments.service';
-import { Comment } from 'src/entities/comment.entity';
+import { Comment } from '../entities/comment.entity';
 import { CreateCommentDto } from './dtos/create-comment-dto';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 import { UpdateCommentDto } from './dtos/update-comment-dto';
 import { ReplyToCommentDto } from './dtos/reply-to-comment.dto';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { Serialize } from '../interceptors/serialize.interceptor';
 
 
 

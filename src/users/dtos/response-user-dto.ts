@@ -1,11 +1,11 @@
 import { Expose, Exclude, Type } from 'class-transformer';
-import { Connection } from 'src/entities/connection.entity';
-import { Group } from 'src/entities/group.entity';
-import { Like } from 'src/entities/like.entity';
-import { Message } from 'src/entities/message.entity';
-import { User } from 'src/entities/user.entity';
-import { AppEvent } from 'src/entities/event.entity';
-import { Notification } from 'src/entities/notification.entity';
+import { Connection } from '../../entities/connection.entity';
+import { Group } from '../../entities/group.entity';
+import { Like } from '../../entities/like.entity';
+import { Message } from '../../entities/message.entity';
+import { User } from '../../entities/user.entity';
+import { AppEvent } from '../../entities/event.entity';
+import { Notification } from '../../entities/notification.entity';
 
 export class ResponseUserDto {
   @Expose()

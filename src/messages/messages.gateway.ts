@@ -3,10 +3,10 @@ import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayConnection, O
 import { Socket } from 'socket.io';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Connection } from 'src/entities/connection.entity';
-import { NotificationsService } from 'src/notifications/notifications.service';
-import { User } from 'src/entities/user.entity';
-import { Message } from 'src/entities/message.entity';
+import { Connection } from '../entities/connection.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { User } from '../entities/user.entity';
+import { Message } from '../entities/message.entity';
 
 
 @WebSocketGateway()

@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dtos/create-event-dto';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Request } from 'express';
-import { AppEvent } from 'src/entities/event.entity';
+import { AppEvent } from '../entities/event.entity';
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };

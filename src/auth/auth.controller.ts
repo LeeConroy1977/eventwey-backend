@@ -9,13 +9,13 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from 'src/auth/dtos/create-user-dto';
-import { User } from 'src/entities/user.entity';
+import { CreateUserDto } from '../auth/dtos/create-user-dto';
+import { User } from '../entities/user.entity';
 import { Response } from 'express';
-import { ResponseUserDto } from 'src/users/dtos/response-user-dto';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { ResponseUserDto } from '../users/dtos/response-user-dto';
+import { Serialize } from '../interceptors/serialize.interceptor';
 import { SignInUserDto } from './dtos/sign-in-user-dto';
 import { JwtAuthGuard } from './jwt.guard';
 import { AuthGuard } from '@nestjs/passport';
@@ -85,9 +85,8 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
-    const { googleId, email, username } = req.user; 
+    const { googleId, email, username } = req.user;
 
- 
     const { user, token } = await this.authService.validateGoogleUser({
       googleId,
       email,

@@ -210,6 +210,20 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
+    if (attrs.tags) {
+      if (typeof attrs.tags === 'string') {
+        try {
+          attrs.tags = JSON.parse(attrs.tags);
+        } catch (error) {
+          attrs.tags = [];
+        }
+      }
+
+      if (!Array.isArray(attrs.tags)) {
+        attrs.tags = [];
+      }
+    }
+
     Object.assign(user, attrs);
 
     await this.repo.save(user);

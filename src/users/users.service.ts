@@ -205,28 +205,37 @@ export class UsersService {
 
   async updateUser(id: number, attrs: Partial<User>) {
     const user = await this.findUserById(id);
-
+  
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-
+  
+    console.log('Incoming request data:', attrs);
+  
     if (attrs.tags) {
+
       if (typeof attrs.tags === 'string') {
         try {
-          attrs.tags = JSON.parse(attrs.tags);
+          attrs.tags = JSON.parse(attrs.tags);  
         } catch (error) {
-          attrs.tags = [];
+          console.error('Error parsing tags:', error);
+          attrs.tags = []; 
         }
       }
-
+  
       if (!Array.isArray(attrs.tags)) {
+        console.log('Tags is not an array, initializing to empty array');
         attrs.tags = [];
       }
     }
-
+  
+    console.log('Final tags:', attrs.tags);
+  
     Object.assign(user, attrs);
+    
 
     await this.repo.save(user);
+  
 
     return await this.repo.findOne({
       where: { id },

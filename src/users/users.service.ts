@@ -212,6 +212,8 @@ export class UsersService {
 
     Object.assign(user, attrs);
 
+    await this.repo.save(user);
+
     return await this.repo.findOne({
       where: { id },
       loadRelationIds: true,

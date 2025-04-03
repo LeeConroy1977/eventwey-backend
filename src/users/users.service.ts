@@ -202,41 +202,42 @@ export class UsersService {
 
     return user.notifications;
   }
-
   async updateUser(id: number, attrs: Partial<User>) {
     const user = await this.findUserById(id);
-  
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-  
-    console.log('Incoming request data:', attrs);
-  
-    if (attrs.tags) {
 
+    // Ensure tags are parsed correctly only if necessary
+    if (attrs.tags) {
+      // If tags are passed as a string, parse them into an array
       if (typeof attrs.tags === 'string') {
         try {
-          attrs.tags = JSON.parse(attrs.tags);  
+          attrs.tags = JSON.parse(attrs.tags); // Parse the stringified array
         } catch (error) {
           console.error('Error parsing tags:', error);
-          attrs.tags = []; 
+          attrs.tags = []; // Reset to an empty array if parsing fails
         }
       }
-  
+
+      // Ensure tags is an array, fallback to empty array if not
       if (!Array.isArray(attrs.tags)) {
         console.log('Tags is not an array, initializing to empty array');
         attrs.tags = [];
       }
     }
-  
+
+    // Log the final tags to verify
     console.log('Final tags:', attrs.tags);
-  
+
+    // Apply changes to the user entity
     Object.assign(user, attrs);
-    
 
+    // Save updated user
     await this.repo.save(user);
-  
 
+    // Return the updated user
     return await this.repo.findOne({
       where: { id },
       loadRelationIds: true,

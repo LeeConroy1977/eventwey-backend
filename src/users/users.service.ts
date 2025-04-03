@@ -4,10 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Group } from '../entities/group.entity';
 import { User } from '../entities/user.entity';
 import { Notification } from '../entities/notification.entity';
-
 import { AppEvent } from '../entities/event.entity';
-import { EventsService } from '../events/events.service';
-import { GroupsService } from '../groups/groups.service';
 import { Repository } from 'typeorm';
 
 @Injectable()

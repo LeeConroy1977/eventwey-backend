@@ -13,10 +13,12 @@ dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) });
 async function bootstrap() {
   if (process.env.NODE_ENV === 'production') {
     dotenv.config({ path: '.env.production' });
+  } else if (process.env.NODE_ENV === 'test') {
+    dotenv.config({ path: '.env.test' });
   } else {
     dotenv.config({ path: '.env.development' });
   }
-
+  console.log('NODE_ENV:', process.env.NODE_ENV);
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

@@ -13,6 +13,7 @@ import { classToPlain } from 'class-transformer';
 import { Group } from '../entities/group.entity';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { validate } from 'class-validator';
 
 @Injectable()
 export class EventsService {
@@ -178,19 +179,34 @@ export class EventsService {
   async createEvent(body: CreateEventDto) {
     const groupId = body.group;
     const group = await this.groupService.findGroupById(groupId);
+    const { title, category, date, startTime, location } = body;
+
+    if (!group) {
+      throw new NotFoundException(`Group with ID ${groupId} not found`);
+    }
+
+    // Check for missing required fields
+    if (!title || !category || !group || !location) {
+      throw new BadRequestException('All required fields must be provided');
+    }
 
     const newEvent = await this.repo.create({
       ...body,
       group,
-
       attendees: [],
     });
 
-    console.log(group);
-
     const groupMembers = await this.groupService.findGroupMembers(group.id);
     console.log(groupMembers, 'group membersxxxxxxxx');
-    const groupOrganisor = group.groupAdmins[0];
+
+    const groupOrganisor =
+      group.groupAdmins && group.groupAdmins.length > 0
+        ? group.groupAdmins[0]
+        : null;
+
+    if (!groupOrganisor) {
+      console.log('No group organiser found');
+    }
 
     for (const groupMember of groupMembers) {
       await this.notificationsService.createNotification(

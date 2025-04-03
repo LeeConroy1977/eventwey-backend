@@ -56,7 +56,7 @@ export class User {
   @Expose()
   bio: string;
 
-  @Column('simple-array', { nullable: true })
+  @Column('text', { array: true, nullable: true })
   @Expose()
   tags: string[] = [];
 

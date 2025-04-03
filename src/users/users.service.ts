@@ -210,7 +210,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     if (attrs.tags !== undefined && attrs.tags !== null) {
-      user.tags = attrs.tags;
+      user.tags = Array.isArray(attrs.tags) ? attrs.tags : [];
     }
 
     Object.assign(user, attrs);

@@ -37,7 +37,7 @@ export class ResponseUserDto {
   bio: string;
 
   @Expose()
-  tags: string[];
+  tags?: string[];
 
   @Expose()
   viewEventsStatus: string;

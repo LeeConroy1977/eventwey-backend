@@ -30,13 +30,13 @@ export class User {
   username: string;
 
   @Column({ nullable: true })
-  password: string; 
+  password: string;
 
   @Column({ nullable: true })
   @Expose()
-  googleId: string; 
+  googleId: string;
 
-  @Column({ default: 'email' }) 
+  @Column({ default: 'email' })
   @Expose()
   authMethod: string;
 
@@ -56,7 +56,7 @@ export class User {
   @Expose()
   bio: string;
 
-  @Column('simple-array', { nullable: true })
+  @Column('simple-array', { nullable: true, default: '{}' })
   @Expose()
   tags: string[];
 
@@ -100,7 +100,7 @@ export class User {
   adminGroups: Group[];
 
   @ManyToMany(() => Group, (group) => group.members, { cascade: true })
-  @JoinTable() 
+  @JoinTable()
   @Transform(({ obj }) => obj.groups?.map((group: Group) => group.id) || [])
   @Expose()
   groups: Group[];
@@ -128,7 +128,7 @@ export class User {
   notifications: Notification[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
-  comments: Comment[]
+  comments: Comment[];
 
   @OneToMany(() => Like, (like) => like.user)
   likes: Like[];

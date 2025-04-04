@@ -9,9 +9,11 @@ import { Notification } from '../entities/notification.entity';
 import { UsersModule } from '../users/users.module';
 import { GroupsModule } from '../groups/groups.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([AppEvent, Group, User, Notification]),
     forwardRef(() => UsersModule),
     forwardRef(() => GroupsModule),

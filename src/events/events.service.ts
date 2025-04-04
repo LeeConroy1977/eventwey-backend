@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AppEvent } from '../entities/event.entity';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { CreateEventDto } from './dtos/create-event-dto';
 import { User } from '../entities/user.entity';
 import { classToPlain } from 'class-transformer';
@@ -14,6 +14,7 @@ import { Group } from '../entities/group.entity';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { validate } from 'class-validator';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class EventsService {
@@ -27,6 +28,24 @@ export class EventsService {
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
   ) {}
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleExpiredEvents() {
+    const currentDate = new Date();
+
+    const expiredEvents = await this.repo.find({
+      where: { date: LessThan(currentDate) },
+    });
+
+    for (const event of expiredEvents) {
+      const updatedDate = new Date(event.date);
+      updatedDate.setMonth(updatedDate.getMonth() + 1);
+
+      event.date = updatedDate;
+      await this.repo.save(event);
+      console.log(`Event ${event.id} has been rescheduled to ${updatedDate}`);
+    }
+  }
 
   async findAllEvents(
     filters: { date?: string; category?: string; sortBy?: string },

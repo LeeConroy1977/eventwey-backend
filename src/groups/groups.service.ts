@@ -101,6 +101,7 @@ export class GroupsService {
   async findGroupById(id: number): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id },
+      relations: ['events', 'groupAdmins', 'members'],
       loadRelationIds: true,
     });
 

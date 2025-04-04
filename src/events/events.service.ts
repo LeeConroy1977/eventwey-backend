@@ -30,14 +30,14 @@ export class EventsService {
   ) {}
   @Cron(CronExpression.EVERY_HOUR)
   async handleExpiredEvents() {
-    const currentTime = Date.now(); 
+    const currentTime = Date.now();
 
     const expiredEvents = await this.repo.find({
-      where: { date: LessThan(currentTime) }, 
+      where: { date: LessThan(currentTime) },
     });
 
     for (const event of expiredEvents) {
-      const updatedDate = new Date(event.date); 
+      const updatedDate = new Date(event.date);
       updatedDate.setMonth(updatedDate.getMonth() + 1);
       event.date = updatedDate.getTime();
       await this.repo.save(event);

@@ -28,20 +28,18 @@ export class EventsService {
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
   ) {}
-
   @Cron(CronExpression.EVERY_HOUR)
   async handleExpiredEvents() {
-    const currentDate = new Date();
+    const currentTime = Date.now(); 
 
     const expiredEvents = await this.repo.find({
-      where: { date: LessThan(currentDate) },
+      where: { date: LessThan(currentTime) }, 
     });
 
     for (const event of expiredEvents) {
-      const updatedDate = new Date(event.date);
+      const updatedDate = new Date(event.date); 
       updatedDate.setMonth(updatedDate.getMonth() + 1);
-
-      event.date = updatedDate;
+      event.date = updatedDate.getTime();
       await this.repo.save(event);
       console.log(`Event ${event.id} has been rescheduled to ${updatedDate}`);
     }

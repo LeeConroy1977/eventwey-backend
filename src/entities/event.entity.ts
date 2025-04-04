@@ -22,9 +22,9 @@ export class AppEvent {
   @Expose()
   image: string;
 
+  @Column({ type: 'bigint' })
   @Expose()
-  @Column('timestamp')
-  date: Date;
+  date: number;
 
   @Column()
   @Expose()

@@ -49,6 +49,7 @@ export class GroupsService {
 
     return await this.groupRepository.findOne({
       where: { id: newGroup.id },
+      relations: ['groupAdmins'],
       loadRelationIds: true,
     });
   }

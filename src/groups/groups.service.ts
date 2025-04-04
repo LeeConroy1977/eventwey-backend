@@ -30,7 +30,7 @@ export class GroupsService {
   ): Promise<Group> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['groups', 'events', 'adminGroups'],
+      relations: ['adminGroups'],
     });
 
     if (!user) {
@@ -44,9 +44,11 @@ export class GroupsService {
 
     const newGroup = await this.groupRepository.save(group);
 
+    user.adminGroups.push(newGroup);
+    await this.userRepository.save(user);
+
     return await this.groupRepository.findOne({
       where: { id: newGroup.id },
-      relations: ['groupAdmins'],
       loadRelationIds: true,
     });
   }

@@ -50,7 +50,6 @@ export class AppEvent {
 
   @ManyToMany(() => User, (user) => user.events, { cascade: true })
   @JoinTable()
-  @Transform(({ obj }) => obj.attendees?.map((attendee: User) => attendee.id))
   @Expose()
   attendees: User[];
 

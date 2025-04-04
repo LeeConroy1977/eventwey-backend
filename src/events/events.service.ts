@@ -230,7 +230,7 @@ export class EventsService {
     for (const groupMember of groupMembers) {
       await this.notificationsService.createNotification(
         groupMember.id,
-        1,
+        group.groupAdmins[0].id,
         'new-group-event',
         `${group.name} has created a new event: ${body.title}`,
       );

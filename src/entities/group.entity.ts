@@ -68,7 +68,6 @@ export class Group {
 
   @ManyToMany(() => User, (user) => user.groups)
   @Expose()
-  @Transform(({ obj }) => obj.members?.map((user: User) => user.id) || [])
   members: User[];
 
   @ManyToMany(() => User, (user) => user.adminGroups)

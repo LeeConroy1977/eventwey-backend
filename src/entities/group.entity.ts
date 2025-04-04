@@ -45,8 +45,8 @@ export class Group {
   @Expose()
   openAccess: boolean;
 
-  @Column('json', { nullable: true }) 
-  @Expose() 
+  @Column('json', { nullable: true })
+  @Expose()
   @Type(() => Location)
   location: {
     placename: string;
@@ -74,10 +74,9 @@ export class Group {
   @ManyToMany(() => User, (user) => user.adminGroups)
   @Expose()
   @JoinTable()
-  @Transform(({ obj }) => obj.groupAdmins?.map((user: User) => user.id) || [])
   groupAdmins: User[];
 
   @OneToMany(() => AppEvent, (event) => event.group, { cascade: true })
   @Transform(({ obj }) => obj.events?.map((event: AppEvent) => event.id) || [])
-  events: Event[]; 
+  events: Event[];
 }

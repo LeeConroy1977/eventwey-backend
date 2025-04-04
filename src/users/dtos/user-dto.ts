@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsArray, IsNumber, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
 import { AppEvent } from '../../entities/event.entity';
 import { Group } from '../../entities/group.entity';
 
@@ -31,8 +31,10 @@ export class UserDto {
   @IsString()
   bio: string;
 
-  @Expose()
-  tags: string[];
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @IsString()
   viewEventsStatus: string;

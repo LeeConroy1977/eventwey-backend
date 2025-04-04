@@ -37,7 +37,7 @@ export class Group {
   @Expose()
   image: string;
 
-  @Column('simple-array')
+  @Column('text', { array: true, nullable: true })
   @Expose()
   description: string[];
 

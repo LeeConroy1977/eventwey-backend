@@ -12,7 +12,7 @@ import { Group } from './group.entity';
 import { User } from './user.entity';
 import { Expose, Transform } from 'class-transformer';
 
-@Entity('events') 
+@Entity('events')
 export class AppEvent {
   @PrimaryGeneratedColumn()
   @Expose()
@@ -24,7 +24,7 @@ export class AppEvent {
 
   @Column()
   @Expose()
-  date: number; 
+  date: number;
 
   @Column()
   @Expose()
@@ -35,9 +35,9 @@ export class AppEvent {
   title: string;
 
   @ManyToOne(() => Group, (group) => group.events, { nullable: false })
-  @JoinColumn({ name: 'groupId' }) 
+  @JoinColumn({ name: 'groupId' })
   @Expose()
-  @Transform(({ value }) => value?.id) 
+  @Transform(({ value }) => value?.id)
   group: Group;
 
   @Column()
@@ -49,8 +49,8 @@ export class AppEvent {
   going: number;
 
   @ManyToMany(() => User, (user) => user.events, { cascade: true })
-  @JoinTable() 
-  @Transform(({ obj }) => obj.attendees?.map((attendee: User) => attendee.id)) 
+  @JoinTable()
+  @Transform(({ obj }) => obj.attendees?.map((attendee: User) => attendee.id))
   @Expose()
   attendees: User[];
 
@@ -69,15 +69,15 @@ export class AppEvent {
   @Column('json', { nullable: true })
   priceBands: { type: string; price: string; ticketCount: number }[];
 
-  @Column('simple-array')
+  @Column('text', { array: true, nullable: true, default: [] })
   @Expose()
-  tags: string[];
+  tags: string[] = [];
 
   @Column()
   @Expose()
   category: string;
 
-  @Column('simple-array', { nullable: true })
+  @Column('text', { array: true, nullable: true })
   @Expose()
   description: string[];
 

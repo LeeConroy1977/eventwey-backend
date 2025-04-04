@@ -77,6 +77,6 @@ export class Group {
   groupAdmins: User[];
 
   @OneToMany(() => AppEvent, (event) => event.group, { cascade: true })
-  @Transform(({ obj }) => obj.events?.map((event: AppEvent) => event.id) || [])
-  events: Event[];
+  @Expose()
+  events: AppEvent[];
 }

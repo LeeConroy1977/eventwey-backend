@@ -32,9 +32,6 @@ export class CreateGroupDto {
   @IsString()
   image: string;
 
-  @IsNotEmpty()
-  groupAdmin: User;
-
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

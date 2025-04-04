@@ -6,6 +6,7 @@ import { Message } from '../../entities/message.entity';
 import { User } from '../../entities/user.entity';
 import { AppEvent } from '../../entities/event.entity';
 import { Notification } from '../../entities/notification.entity';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 
 export class ResponseUserDto {
   @Expose()
@@ -37,6 +38,9 @@ export class ResponseUserDto {
   bio: string;
 
   @Expose()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   tags?: string[];
 
   @Expose()

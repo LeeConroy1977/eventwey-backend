@@ -171,6 +171,7 @@ export class EventsService {
         skip: skip,
         take: limit,
         loadRelationIds: true,
+        relations: ['group'],
       });
 
       // Ensure dates are returned as timestamps to match frontend expectation
@@ -192,8 +193,8 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'],
       loadRelationIds: true,
+      relations: ['group', 'attendees'],
     });
 
     if (!event) {

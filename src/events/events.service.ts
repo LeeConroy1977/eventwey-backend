@@ -193,15 +193,21 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      loadRelationIds: true,
       relations: ['group', 'attendees'],
+      loadRelationIds: true, // Keep this to get groupId as scalar
     });
 
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    return classToPlain(event);
+    // Manually map to match findAllEvents
+    const formattedEvent = {
+      ...event,
+      date: new Date(event.date).getTime(),
+    };
+
+    return formattedEvent;
   }
 
   async findEventAttendees(eventId: number) {
@@ -226,7 +232,7 @@ export class EventsService {
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
-    const groupId = event.group;
+    const groupId = event.group.id;
 
     const group = await this.groupService.findGroupById(groupId);
     if (!group) {

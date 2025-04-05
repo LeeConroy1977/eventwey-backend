@@ -47,105 +47,146 @@ export class EventsService {
 
   async findAllEvents(
     filters: { date?: string; category?: string; sortBy?: string },
-    pagination: { limit: number; page: number },
-  ) {
-    const { date, category, sortBy } = filters;
-    let { limit = 12, page = 1 } = pagination;
+    pagination: { limit?: number; page?: number } = { limit: 12, page: 1 }, // Move defaults here
+  ): Promise<any[]> {
+    try {
+      const { date, category, sortBy } = filters;
+      const { limit = 12, page = 1 } = pagination; // Apply defaults at runtime
 
-    const whereConditions: any = {};
+      const whereConditions: any = {};
 
-    if (date) {
-      const today = new Date();
-      let startDate: Date;
-      let endDate: Date;
+      if (date) {
+        const today = new Date();
+        let startDate: Date;
+        let endDate: Date;
 
-      switch (date) {
-        case 'today':
-          startDate = new Date(today.setHours(0, 0, 0, 0));
-          endDate = new Date(today.setHours(23, 59, 59, 999));
-          whereConditions.date = { $gte: startDate, $lte: endDate };
+        switch (date) {
+          case 'today':
+            startDate = new Date(today);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(today);
+            endDate.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startDate, $lte: endDate };
+            break;
+          case 'tomorrow':
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            startDate = new Date(tomorrow);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(tomorrow);
+            endDate.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startDate, $lte: endDate };
+            break;
+          case 'thisweek':
+            const startOfWeek = new Date();
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startOfWeek, $lte: endOfWeek };
+            break;
+          case 'nextweek':
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            const startOfNextWeek = new Date(nextWeek);
+            startOfNextWeek.setDate(
+              startOfNextWeek.getDate() - startOfNextWeek.getDay(),
+            );
+            startOfNextWeek.setHours(0, 0, 0, 0);
+            const endOfNextWeek = new Date(startOfNextWeek);
+            endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+            endOfNextWeek.setHours(23, 59, 59, 999);
+            whereConditions.date = {
+              $gte: startOfNextWeek,
+              $lte: endOfNextWeek,
+            };
+            break;
+          case 'thismonth':
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            const endOfMonth = new Date(startOfMonth);
+            endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+            endOfMonth.setDate(0);
+            endOfMonth.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startOfMonth, $lte: endOfMonth };
+            break;
+          case 'nextmonth':
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            const startOfNextMonth = new Date(nextMonth);
+            startOfNextMonth.setDate(1);
+            startOfNextMonth.setHours(0, 0, 0, 0);
+            const endOfNextMonth = new Date(startOfNextMonth);
+            endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
+            endOfNextMonth.setDate(0);
+            endOfNextMonth.setHours(23, 59, 59, 999);
+            whereConditions.date = {
+              $gte: startOfNextMonth,
+              $lte: endOfNextMonth,
+            };
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (category) {
+        whereConditions.category = category;
+      }
+
+      let order: any = { date: 'ASC' }; // Default order
+      switch (sortBy) {
+        case 'latest':
+          order = { date: 'DESC' };
           break;
-        case 'tomorrow':
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          startDate = new Date(tomorrow.setHours(0, 0, 0, 0));
-          endDate = new Date(tomorrow.setHours(23, 59, 59, 999));
-          whereConditions.date = { $gte: startDate, $lte: endDate };
+        case 'popular':
+          order = { going: 'DESC' }; // Sort by number of attendees
           break;
-        case 'thisweek':
-          const startOfWeek = new Date();
-          startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-          const endOfWeek = new Date(startOfWeek);
-          endOfWeek.setDate(startOfWeek.getDate() + 6);
-          whereConditions.date = { $gte: startOfWeek, $lte: endOfWeek };
+        case 'free':
+          whereConditions.free = true; // Filter for free events
+          order = { date: 'ASC' };
           break;
-        case 'nextweek':
-          const nextWeek = new Date();
-          nextWeek.setDate(nextWeek.getDate() + 7);
-          const startOfNextWeek = new Date(nextWeek);
-          startOfNextWeek.setDate(
-            startOfNextWeek.getDate() - startOfNextWeek.getDay(),
-          );
-          const endOfNextWeek = new Date(startOfNextWeek);
-          endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
-          whereConditions.date = { $gte: startOfNextWeek, $lte: endOfNextWeek };
-          break;
-        case 'thismonth':
-          const startOfMonth = new Date();
-          startOfMonth.setDate(1);
-          const endOfMonth = new Date(startOfMonth);
-          endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-          whereConditions.date = { $gte: startOfMonth, $lte: endOfMonth };
-          break;
-        case 'nextmonth':
-          const nextMonth = new Date();
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
-          const startOfNextMonth = new Date(nextMonth);
-          startOfNextMonth.setDate(1);
-          const endOfNextMonth = new Date(startOfNextMonth);
-          endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
-          whereConditions.date = {
-            $gte: startOfNextMonth,
-            $lte: endOfNextMonth,
-          };
+        case 'date':
+          order = { date: 'ASC' };
           break;
         default:
+          order = { date: 'ASC' };
           break;
       }
+
+      const skip = (page - 1) * limit;
+
+      console.log('Query conditions:', {
+        where: whereConditions,
+        order,
+        skip,
+        take: limit,
+      });
+
+      const events = await this.repo.find({
+        where: whereConditions,
+        order: order,
+        skip: skip,
+        take: limit,
+        loadRelationIds: true,
+      });
+
+      // Ensure dates are returned as timestamps to match frontend expectation
+      const formattedEvents = events.map((event) => ({
+        ...event,
+        date: new Date(event.date).getTime(),
+      }));
+
+      return formattedEvents;
+    } catch (error) {
+      // Type assertion to handle 'unknown' error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error('Error in findAllEvents:', error);
+      throw new Error(`Failed to fetch events: ${errorMessage}`);
     }
-
-    if (category) {
-      whereConditions.category = category;
-    }
-
-    let order: any;
-    switch (sortBy) {
-      case 'latest':
-        order = { date: 'DESC' };
-        break;
-      case 'popular':
-        order = { popularity: 'DESC' };
-        break;
-      case 'free':
-        whereConditions.price = 'Free';
-        order = { date: 'ASC' };
-        break;
-      default:
-        order = { date: 'ASC' };
-        break;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const events = await this.repo.find({
-      where: whereConditions,
-      order: order,
-      skip: skip,
-      take: limit,
-      loadRelationIds: true,
-    });
-
-    return events;
   }
 
   async findEventById(eventId: number) {

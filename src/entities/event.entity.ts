@@ -37,7 +37,6 @@ export class AppEvent {
   @ManyToOne(() => Group, (group) => group.events, { nullable: false })
   @JoinColumn({ name: 'groupId' })
   @Expose()
-  @Transform(({ value }) => value?.id)
   group: Group;
 
   @Column()

@@ -170,19 +170,18 @@ export class EventsService {
         order: order,
         skip: skip,
         take: limit,
-        loadRelationIds: true,
-        relations: ['group'],
+        relations: ['group', 'attendees'], // Load full relations
       });
 
-      // Ensure dates are returned as timestamps to match frontend expectation
+      // Map to format date and attendees
       const formattedEvents = events.map((event) => ({
         ...event,
         date: new Date(event.date).getTime(),
+        attendees: event.attendees.map((attendee) => attendee.id), // Extract IDs
       }));
 
       return formattedEvents;
     } catch (error) {
-      // Type assertion to handle 'unknown' error
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error('Error in findAllEvents:', error);
@@ -193,18 +192,18 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'],
-      loadRelationIds: true, // Keep this to get groupId as scalar
+      relations: ['group', 'attendees'], // Load full group relation
     });
 
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    // Manually map to match findAllEvents
+    // Manually shape the result
     const formattedEvent = {
       ...event,
       date: new Date(event.date).getTime(),
+      attendees: event.attendees.map((attendee) => attendee.id), // Extract IDs
     };
 
     return formattedEvent;

@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -15,6 +16,7 @@ import { CreateEventDto } from './dtos/create-event-dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Request } from 'express';
 import { AppEvent } from '../entities/event.entity';
+
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
@@ -81,6 +83,15 @@ export class EventsController {
   async leaveEvent(@Param('id', ParseIntPipe) eventId: number, @Req() req) {
     const userId = req.user.id;
     return this.eventsService.leaveEvent(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('/:id')
+  async updateEvent(
+    @Param('id', ParseIntPipe) eventId: number,
+    @Body() updateData: Partial<AppEvent>,
+  ): Promise<AppEvent> {
+    return this.eventsService.updateEvent(eventId, updateData);
   }
 
   @UseGuards(JwtAuthGuard)

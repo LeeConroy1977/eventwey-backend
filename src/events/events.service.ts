@@ -300,7 +300,15 @@ export class EventsService {
 
     Object.assign(event, updateData);
 
-    return this.repo.save(event);
+    const updatedEvent = await this.repo.save(event);
+
+    const formattedEvent = {
+      ...updatedEvent,
+      date: new Date(updatedEvent.date).getTime(),
+      attendees: updatedEvent.attendees.map((attendee) => attendee.id),
+    };
+
+    return formattedEvent as unknown as AppEvent; 
   }
 
   async addUserToEvent(

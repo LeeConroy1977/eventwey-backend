@@ -20,6 +20,7 @@ import { User } from '../entities/user.entity';
 import { AppEvent } from '../entities/event.entity';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { ResponseUserDto } from '../users/dtos/response-user-dto';
+import { GroupDto } from './dtos/group.dto';
 
 export interface AuthenticatedUser {
   id: number;
@@ -65,7 +66,9 @@ export class GroupsController {
   }
 
   @Get('/:id')
-  async findGroupById(@Param('id', ParseIntPipe) id: number): Promise<Group> {
+  async findGroupById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<GroupDto> {
     return this.groupsService.findGroupById(id);
   }
   @Serialize(ResponseUserDto)

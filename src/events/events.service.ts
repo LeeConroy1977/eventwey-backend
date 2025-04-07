@@ -222,8 +222,16 @@ export class EventsService {
     return group;
   }
 
-  async createEvent(body: CreateEventDto) {
-    const group = await this.groupService.findGroupById(body.group);
+  async createEvent(body: CreateEventDto): Promise<any> {
+    const groupDto = await this.groupService.findGroupById(body.group);
+    if (!groupDto) {
+      throw new NotFoundException(`Group with ID ${body.group} not found`);
+    }
+
+    const group = await this.groupRepository.findOne({
+      where: { id: body.group },
+      relations: ['groupAdmins'],
+    });
     if (!group) {
       throw new NotFoundException(`Group with ID ${body.group} not found`);
     }
@@ -232,12 +240,15 @@ export class EventsService {
       throw new BadRequestException('All required fields must be provided');
     }
 
+    const date =
+      typeof body.date === 'string' ? new Date(body.date) : new Date(body.date);
+    if (isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date provided');
+    }
+
     const newEvent = this.repo.create({
       ...body,
-      date:
-        typeof body.date === 'string'
-          ? new Date(body.date).getTime()
-          : body.date, // Convert to timestamp if string
+      date: date.getTime(),
       group,
       attendees: [],
     });
@@ -246,25 +257,30 @@ export class EventsService {
     console.log(groupMembers, 'group membersxxxxxxxx');
 
     const groupOrganisor = group.groupAdmins?.[0] || null;
-
     if (!groupOrganisor) {
       console.log('No group organiser found');
     }
 
-    for (const groupMember of groupMembers) {
-      await this.notificationsService.createNotification(
-        groupMember.id,
-        group.groupAdmins[0].id,
-        'new-group-event',
-        `${group.name} has created a new event: ${body.title}`,
-      );
+    if (groupOrganisor) {
+      for (const groupMember of groupMembers) {
+        await this.notificationsService.createNotification(
+          groupMember.id,
+          groupOrganisor.id,
+          'new-group-event',
+          `${group.name} has created a new event: ${body.title}`,
+        );
+      }
     }
-
     const savedEvent = await this.repo.save(newEvent);
     return {
       ...savedEvent,
-      date: savedEvent.date, // Already a timestamp
+      date: savedEvent.date,
       attendees: savedEvent.attendees.map((attendee) => attendee.id),
+      group: {
+        ...savedEvent.group,
+        events: savedEvent.group.events.map((e) => e.id),
+        members: savedEvent.group.members.map((m) => m.id),
+      },
     };
   }
 

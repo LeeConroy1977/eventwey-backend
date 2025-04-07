@@ -1,4 +1,5 @@
 import { Expose, Type } from 'class-transformer';
+import { User } from 'src/entities/user.entity';
 
 export class GroupDto {
   @Expose()
@@ -33,14 +34,14 @@ export class GroupDto {
   };
 
   @Expose()
-  @Type(() => Number) 
-  groupAdmins: number[];
+  @Type(() => User)
+  groupAdmins: User[];
 
   @Expose()
-  @Type(() => Number) 
+  @Type(() => Number)
   events: number[];
 
   @Expose()
-  @Type(() => Number) 
+  @Type(() => Number)
   members: number[];
 }

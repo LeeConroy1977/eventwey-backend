@@ -11,6 +11,7 @@ import { Group } from '../entities/group.entity';
 import { User } from '../entities/user.entity';
 import { CreateGroupDto } from './dtos/create-group-dto';
 import { AppEvent } from '../entities/event.entity';
+import { GroupDto } from './dtos/group.dto';
 
 @Injectable()
 export class GroupsService {
@@ -98,18 +99,22 @@ export class GroupsService {
     return groups;
   }
 
-  async findGroupById(id: number): Promise<Group> {
+  async findGroupById(id: number): Promise<GroupDto> {
     const group = await this.groupRepository.findOne({
       where: { id },
       relations: ['events', 'groupAdmins', 'members'],
-      loadRelationIds: true,
     });
 
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);
     }
 
-    return group;
+    return {
+      ...group,
+      events: group.events.map((event) => event.id),
+      members: group.members.map((member) => member.id),
+      groupAdmins: group.groupAdmins,
+    };
   }
 
   async findGroupMembers(groupId: number) {

@@ -9,11 +9,9 @@ import { AppEvent } from '../entities/event.entity';
 import { LessThan, Repository } from 'typeorm';
 import { CreateEventDto } from './dtos/create-event-dto';
 import { User } from '../entities/user.entity';
-import { classToPlain } from 'class-transformer';
 import { Group } from '../entities/group.entity';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { validate } from 'class-validator';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -28,6 +26,7 @@ export class EventsService {
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
   ) {}
+
   @Cron(CronExpression.EVERY_HOUR)
   async handleExpiredEvents() {
     const currentTime = Date.now();
@@ -47,44 +46,40 @@ export class EventsService {
 
   async findAllEvents(
     filters: { date?: string; category?: string; sortBy?: string },
-    pagination: { limit?: number; page?: number } = { limit: 12, page: 1 }, // Move defaults here
+    pagination: { limit?: number; page?: number } = { limit: 12, page: 1 },
   ): Promise<any[]> {
     try {
       const { date, category, sortBy } = filters;
-      const { limit = 12, page = 1 } = pagination; // Apply defaults at runtime
+      const { limit = 12, page = 1 } = pagination;
 
       const whereConditions: any = {};
 
       if (date) {
         const today = new Date();
-        let startDate: Date;
-        let endDate: Date;
+        let startTimestamp: number;
+        let endTimestamp: number;
 
         switch (date) {
           case 'today':
-            startDate = new Date(today);
-            startDate.setHours(0, 0, 0, 0);
-            endDate = new Date(today);
-            endDate.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startDate, $lte: endDate };
+            startTimestamp = today.setHours(0, 0, 0, 0);
+            endTimestamp = today.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'tomorrow':
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            startDate = new Date(tomorrow);
-            startDate.setHours(0, 0, 0, 0);
-            endDate = new Date(tomorrow);
-            endDate.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startDate, $lte: endDate };
+            startTimestamp = tomorrow.setHours(0, 0, 0, 0);
+            endTimestamp = tomorrow.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'thisweek':
             const startOfWeek = new Date();
             startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-            startOfWeek.setHours(0, 0, 0, 0);
+            startTimestamp = startOfWeek.setHours(0, 0, 0, 0);
             const endOfWeek = new Date(startOfWeek);
             endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startOfWeek, $lte: endOfWeek };
+            endTimestamp = endOfWeek.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'nextweek':
             const nextWeek = new Date();
@@ -93,39 +88,33 @@ export class EventsService {
             startOfNextWeek.setDate(
               startOfNextWeek.getDate() - startOfNextWeek.getDay(),
             );
-            startOfNextWeek.setHours(0, 0, 0, 0);
+            startTimestamp = startOfNextWeek.setHours(0, 0, 0, 0);
             const endOfNextWeek = new Date(startOfNextWeek);
             endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
-            endOfNextWeek.setHours(23, 59, 59, 999);
-            whereConditions.date = {
-              $gte: startOfNextWeek,
-              $lte: endOfNextWeek,
-            };
+            endTimestamp = endOfNextWeek.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'thismonth':
             const startOfMonth = new Date();
             startOfMonth.setDate(1);
-            startOfMonth.setHours(0, 0, 0, 0);
+            startTimestamp = startOfMonth.setHours(0, 0, 0, 0);
             const endOfMonth = new Date(startOfMonth);
             endOfMonth.setMonth(endOfMonth.getMonth() + 1);
             endOfMonth.setDate(0);
-            endOfMonth.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startOfMonth, $lte: endOfMonth };
+            endTimestamp = endOfMonth.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'nextmonth':
             const nextMonth = new Date();
             nextMonth.setMonth(nextMonth.getMonth() + 1);
             const startOfNextMonth = new Date(nextMonth);
             startOfNextMonth.setDate(1);
-            startOfNextMonth.setHours(0, 0, 0, 0);
+            startTimestamp = startOfNextMonth.setHours(0, 0, 0, 0);
             const endOfNextMonth = new Date(startOfNextMonth);
             endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
             endOfNextMonth.setDate(0);
-            endOfNextMonth.setHours(23, 59, 59, 999);
-            whereConditions.date = {
-              $gte: startOfNextMonth,
-              $lte: endOfNextMonth,
-            };
+            endTimestamp = endOfNextMonth.setHours(23, 59, 59, 999);
+            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           default:
             break;
@@ -136,16 +125,16 @@ export class EventsService {
         whereConditions.category = category;
       }
 
-      let order: any = { date: 'ASC' }; // Default order
+      let order: any = { date: 'ASC' };
       switch (sortBy) {
         case 'latest':
           order = { date: 'DESC' };
           break;
         case 'popular':
-          order = { going: 'DESC' }; // Sort by number of attendees
+          order = { going: 'DESC' };
           break;
         case 'free':
-          whereConditions.free = true; // Filter for free events
+          whereConditions.free = true;
           order = { date: 'ASC' };
           break;
         case 'date':
@@ -167,20 +156,17 @@ export class EventsService {
 
       const events = await this.repo.find({
         where: whereConditions,
-        order: order,
-        skip: skip,
+        order,
+        skip,
         take: limit,
-        relations: ['group', 'attendees'], // Load full relations
+        relations: ['group', 'attendees'],
       });
 
-      // Map to format date and attendees
-      const formattedEvents = events.map((event) => ({
+      return events.map((event) => ({
         ...event,
-        date: new Date(event.date).getTime(),
-        attendees: event.attendees.map((attendee) => attendee.id), // Extract IDs
+        date: event.date, // Already a timestamp
+        attendees: event.attendees.map((attendee) => attendee.id),
       }));
-
-      return formattedEvents;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -192,21 +178,18 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'], // Load full group relation
+      relations: ['group', 'attendees'],
     });
 
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    // Manually shape the result
-    const formattedEvent = {
+    return {
       ...event,
-      date: new Date(event.date).getTime(),
-      attendees: event.attendees.map((attendee) => attendee.id), // Extract IDs
+      date: event.date, // Already a timestamp
+      attendees: event.attendees.map((attendee) => attendee.id),
     };
-
-    return formattedEvent;
   }
 
   async findEventAttendees(eventId: number) {
@@ -217,9 +200,7 @@ export class EventsService {
     }
 
     const attendees = await this.userRepository.find({
-      where: {
-        groups: { id: eventId },
-      },
+      where: { groups: { id: eventId } },
       loadRelationIds: true,
     });
 
@@ -235,28 +216,28 @@ export class EventsService {
 
     const group = await this.groupService.findGroupById(groupId);
     if (!group) {
-      throw new NotFoundException(`Event group  not found`);
+      throw new NotFoundException(`Event group not found`);
     }
 
     return group;
   }
 
   async createEvent(body: CreateEventDto) {
-    const groupId = body.group;
-    const group = await this.groupService.findGroupById(groupId);
-    const { title, category, date, startTime, location } = body;
-
+    const group = await this.groupService.findGroupById(body.group);
     if (!group) {
-      throw new NotFoundException(`Group with ID ${groupId} not found`);
+      throw new NotFoundException(`Group with ID ${body.group} not found`);
     }
 
-    // Check for missing required fields
-    if (!title || !category || !group || !location) {
+    if (!body.title || !body.category || !body.date || !body.location) {
       throw new BadRequestException('All required fields must be provided');
     }
 
-    const newEvent = await this.repo.create({
+    const newEvent = this.repo.create({
       ...body,
+      date:
+        typeof body.date === 'string'
+          ? new Date(body.date).getTime()
+          : body.date, // Convert to timestamp if string
       group,
       attendees: [],
     });
@@ -264,10 +245,7 @@ export class EventsService {
     const groupMembers = await this.groupService.findGroupMembers(group.id);
     console.log(groupMembers, 'group membersxxxxxxxx');
 
-    const groupOrganisor =
-      group.groupAdmins && group.groupAdmins.length > 0
-        ? group.groupAdmins[0]
-        : null;
+    const groupOrganisor = group.groupAdmins?.[0] || null;
 
     if (!groupOrganisor) {
       console.log('No group organiser found');
@@ -282,13 +260,18 @@ export class EventsService {
       );
     }
 
-    return this.repo.save(newEvent);
+    const savedEvent = await this.repo.save(newEvent);
+    return {
+      ...savedEvent,
+      date: savedEvent.date, // Already a timestamp
+      attendees: savedEvent.attendees.map((attendee) => attendee.id),
+    };
   }
 
   async updateEvent(
     eventId: number,
     updateData: Partial<AppEvent>,
-  ): Promise<AppEvent> {
+  ): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
       relations: ['group', 'attendees'],
@@ -301,21 +284,18 @@ export class EventsService {
     Object.assign(event, updateData);
 
     const updatedEvent = await this.repo.save(event);
-
-    const formattedEvent = {
+    return {
       ...updatedEvent,
-      date: new Date(updatedEvent.date).getTime(),
+      date: updatedEvent.date, // Already a timestamp
       attendees: updatedEvent.attendees.map((attendee) => attendee.id),
     };
-
-    return formattedEvent as unknown as AppEvent; 
   }
 
   async addUserToEvent(
     eventId: number,
     userId: number,
     ticketType?: string,
-  ): Promise<AppEvent> {
+  ): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
       relations: ['group', 'attendees'],
@@ -356,7 +336,6 @@ export class EventsService {
       const priceBand = event.priceBands.find(
         (band) => band.type === ticketType,
       );
-
       if (!priceBand) {
         throw new BadRequestException(
           `Ticket type "${ticketType}" is not available`,
@@ -381,13 +360,10 @@ export class EventsService {
       attendees: event.attendees,
     });
 
-    return this.repo.findOne({
-      where: { id: updatedEvent.id },
-      loadRelationIds: true,
-    });
+    return updatedEvent; // Already formatted by updateEvent
   }
 
-  async leaveEvent(eventId: number, userId: number): Promise<AppEvent> {
+  async leaveEvent(eventId: number, userId: number): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
       relations: ['group', 'attendees'],
@@ -422,7 +398,6 @@ export class EventsService {
       const priceBandIndex = event.priceBands.findIndex(
         (p) => p.type === 'Standard',
       );
-
       if (priceBandIndex !== -1) {
         event.priceBands[priceBandIndex].ticketCount += 1;
         updateData.priceBands = [...event.priceBands];
@@ -430,11 +405,7 @@ export class EventsService {
     }
 
     const updatedEvent = await this.updateEvent(eventId, updateData);
-
-    return this.repo.findOne({
-      where: { id: updatedEvent.id },
-      loadRelationIds: true,
-    });
+    return updatedEvent; // Already formatted by updateEvent
   }
 
   async deleteEvent(
@@ -466,7 +437,6 @@ export class EventsService {
     }
 
     const isAdmin = group.groupAdmins.some((admin) => admin.id === userId);
-
     if (!isAdmin) {
       throw new ForbiddenException(
         `You do not have permission to delete this event`,
@@ -474,7 +444,6 @@ export class EventsService {
     }
 
     await this.repo.delete(eventId);
-
     return { message: `Event ${eventId} has been successfully deleted` };
   }
 }

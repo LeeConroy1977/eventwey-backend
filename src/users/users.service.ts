@@ -74,7 +74,6 @@ export class UsersService {
       where: {
         connections: { id },
       },
-      loadRelationIds: true,
     });
     return connections;
   }

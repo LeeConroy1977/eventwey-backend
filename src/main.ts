@@ -24,8 +24,20 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.use(cookieParser());
   app.enableCors({
-    origin: 'http://localhost:5173/', // Adjust to your frontend
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'https://your-frontend-domain.com',
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, origin || '*');
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
   });
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -107,13 +107,8 @@ import { JwtAuthGuard } from './auth/jwt.guard';
     EventsModule,
     GroupsModule,
     CommentsModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '1d' },
-    }),
   ],
   controllers: [AppController],
   providers: [AppService],
-  exports: [AuthService, JwtAuthGuard],
 })
 export class AppModule {}

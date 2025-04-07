@@ -1,34 +1,22 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { jwtSecret } from './constants';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-cookie') {
+  constructor(private jwtService: JwtService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        JwtStrategy.extractJWT,
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request: Request) => request?.cookies?.token || null, // Extract from cookie
       ]),
-      secretOrKey: jwtSecret,
+      ignoreExpiration: false,
+      secretOrKey: process.env.JWT_SECRET || 'your-secret-key', // Match your JWT config
     });
   }
 
-  private static extractJWT(req: Request): string | null {
-    if (req.cookies && 'token' in req.cookies) {
-      console.log(req.cookies.token);
-      return req.cookies.token;
-    }
-    return null;
-  }
-
   async validate(payload: { id: number; email: string }) {
-    console.log('JWT Payload:', payload);
-    if (!payload || !payload.id) {
-      throw new UnauthorizedException('Invalid token');
-    }
-    return payload;
+    return { id: payload.id, email: payload.email }; // Payload attached to request.user
   }
 }

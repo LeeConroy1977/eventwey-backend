@@ -36,30 +36,15 @@ export class UsersController {
     private usersService: UsersService,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
   @Serialize(ResponseUserDto)
   @Get()
   findAllUsers() {
     return this.usersService.findAllUsers();
   }
 
-  @UseGuards(JwtAuthGuard)
   @Serialize(ResponseUserDto)
   @Get('/:id')
-  async findUserById(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: AuthenticatedRequest,
-  ) {
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedException('No authenticated user');
-    }
-
-    if (user.id !== id) {
-      throw new ForbiddenException('You are not allowed to access this user');
-    }
-
+  async findUserById(@Param('id', ParseIntPipe) id: number) {
     const foundUser = await this.usersService.findUserById(id);
     if (!foundUser) {
       throw new NotFoundException(`User with ID ${id} not found.`);
@@ -84,7 +69,6 @@ export class UsersController {
     return groups;
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('/:id/admin-groups')
   async findAdminGroups(@Param('id', ParseIntPipe) id: number): Promise<any> {
     const groups = await this.usersService.findAdminGroups(id);

@@ -8,7 +8,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { User } from '../entities/user.entity';
-import { UsersService } from '..//users/users.service';
+import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
@@ -32,7 +32,6 @@ export class AuthService {
     res: Response,
   ): Promise<User> {
     const userExists = await this.usersService.findUsersWithEmail(email);
-
     if (userExists.length > 0) {
       throw new ConflictException('Email already exists');
     }
@@ -48,11 +47,11 @@ export class AuthService {
     });
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24,
     });
-    return newUser;
+    return newUser; // User only, token in cookie
   }
 
   async signIn(email: string, password: string, res: Response): Promise<User> {
@@ -60,50 +59,38 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
     const passwordMatch = await this.comparePassword({
       password,
       hash: user.password,
     });
-
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid password');
     }
-
-    const token = await this.assignToken({
-      id: user.id,
-      email: user.email,
-    });
-
+    const token = await this.assignToken({ id: user.id, email: user.email });
     if (!token) {
       throw new ForbiddenException('No access token');
     }
-
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24,
     });
-
-    return await this.userRepository.findOne({
-      where: {
-        id: user.id,
-      },
+    return this.userRepository.findOne({
+      where: { id: user.id },
       loadRelationIds: true,
     });
   }
 
-  async signout(req: Request, res: Response) {
+  async signout(req: any, res: Response): Promise<{ message: string }> {
     res.clearCookie('token');
-    return res.send({ message: 'Logged out successfully' });
+    return { message: 'Logged out successfully' };
   }
 
-  async validateGoogleUser(user: any) {
+  async validateGoogleUser(user: any, res: Response): Promise<User> {
     let existingUser: User | null = await this.usersService.findUserByGoogleId(
       user.googleId,
     );
-
     if (!existingUser) {
       const newUser = this.userRepository.create({
         username: user.displayName || `${user.given_name} ${user.family_name}`,
@@ -113,34 +100,35 @@ export class AuthService {
         profileImage:
           user.photos && user.photos[0] ? user.photos[0].value : null,
       });
-
       const savedUser = await this.userRepository.save(newUser);
-
-      if (Array.isArray(savedUser)) {
-        existingUser = savedUser[0];
-      } else {
-        existingUser = savedUser;
-      }
+      existingUser = Array.isArray(savedUser) ? savedUser[0] : savedUser;
     }
-
-    const token = this.jwtService.sign({ userId: existingUser.id });
-
-    return { user: existingUser, token };
+    const token = await this.assignToken({
+      id: existingUser.id,
+      email: existingUser.email,
+    });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24,
+    });
+    return existingUser;
   }
 
-  async hashPassword(password: string) {
+  async hashPassword(password: string): Promise<string> {
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    return hashedPassword;
+    return bcrypt.hash(password, saltRounds);
   }
 
-  async comparePassword(agrs: { password: string; hash: string }) {
-    return await bcrypt.compare(agrs.password, agrs.hash);
+  async comparePassword(args: {
+    password: string;
+    hash: string;
+  }): Promise<boolean> {
+    return bcrypt.compare(args.password, args.hash);
   }
 
-  async assignToken(args: { id: number; email: string }) {
-    const payload = args;
-
-    return await this.jwtService.signAsync(payload);
+  async assignToken(args: { id: number; email: string }): Promise<string> {
+    return this.jwtService.signAsync(args);
   }
 }

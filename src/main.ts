@@ -23,7 +23,10 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.use(cookieParser());
-  app.enableCors();
+  app.enableCors({
+    origin: 'http://localhost:5173/', // Adjust to your frontend
+    credentials: true,
+  });
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

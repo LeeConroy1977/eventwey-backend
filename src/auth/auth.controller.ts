@@ -11,18 +11,25 @@ import {
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from '../auth/dtos/create-user-dto';
+import { CreateUserDto } from './dtos/create-user-dto';
 import { User } from '../entities/user.entity';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { ResponseUserDto } from '../users/dtos/response-user-dto';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { SignInUserDto } from './dtos/sign-in-user-dto';
-import { JwtAuthGuard } from './jwt.guard';
+
 import { AuthGuard } from '@nestjs/passport';
 import { plainToClass } from 'class-transformer';
+import { JwtAuthGuard } from './jwt.guard';
 
-interface AuthenticatedRequest extends Request {
-  user: { id: number; username: string; email: string; googleId: string };
+// Interface for JwtAuthGuard (matches JwtCookieStrategy payload)
+interface JwtAuthenticatedRequest extends Request {
+  user: { id: number; email: string };
+}
+
+// Interface for GoogleStrategy (matches Google auth data)
+interface GoogleAuthenticatedRequest extends Request {
+  user: { id: string; email: string; username?: string }; // googleId as string
 }
 
 @Serialize(ResponseUserDto)
@@ -35,7 +42,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('/whoami')
-  whoAmI(@Req() req: AuthenticatedRequest) {
+  whoAmI(@Req() req: JwtAuthenticatedRequest): Promise<User> {
     console.log('req.user:', req.user);
     if (!req.user) {
       throw new Error('User not authenticated');
@@ -56,19 +63,22 @@ export class AuthController {
       res,
     );
   }
+
   @Post('signin')
   @HttpCode(HttpStatus.OK)
   async signIn(
     @Body() body: SignInUserDto,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const user = await this.authService.signIn(body.email, body.password, res);
-
-    return user;
+  ): Promise<User> {
+    return this.authService.signIn(body.email, body.password, res);
   }
 
   @Post('signout')
-  signout(@Req() req, @Res() res) {
+  @HttpCode(HttpStatus.OK)
+  signout(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<{ message: string }> {
     return this.authService.signout(req, res);
   }
 
@@ -82,21 +92,14 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(
-    @Req() req: AuthenticatedRequest,
-    @Res() res: Response,
-  ) {
-    const { googleId, email, username } = req.user;
-
-    const { user, token } = await this.authService.validateGoogleUser({
-      googleId,
-      email,
-      username,
-    });
-
-    const userDto = plainToClass(ResponseUserDto, user, {
-      excludeExtraneousValues: true,
-    });
-
-    return res.json({ token, user: userDto });
+    @Req() req: GoogleAuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<User> {
+    const { id: googleId, email, username } = req.user;
+    const user = await this.authService.validateGoogleUser(
+      { googleId, email, username },
+      res,
+    );
+    return user; 
   }
 }

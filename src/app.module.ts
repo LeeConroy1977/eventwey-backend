@@ -20,6 +20,9 @@ import { Notification } from './entities/notification.entity';
 import { Comment } from './entities/comment.entity';
 import { Like } from './entities/like.entity';
 import { Message } from './entities/message.entity';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthService } from './auth/auth.service';
+import { JwtAuthGuard } from './auth/jwt.guard';
 
 @Module({
   imports: [
@@ -104,8 +107,13 @@ import { Message } from './entities/message.entity';
     EventsModule,
     GroupsModule,
     CommentsModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'your-secret-key',
+      signOptions: { expiresIn: '1d' },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AppModule {}

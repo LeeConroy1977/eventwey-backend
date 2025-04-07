@@ -12,13 +12,18 @@ import { JwtAuthGuard } from './jwt.guard';
 @Module({
   imports: [
     forwardRef(() => UsersModule),
-    PassportModule.register({ defaultStrategy: 'google' }), 
+    PassportModule.register({ defaultStrategy: 'google' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'my-secret',
       signOptions: { expiresIn: '1d' },
     }),
   ],
-  providers: [AuthService, GoogleStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy, 
+    JwtAuthGuard, 
+    GoogleStrategy,
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard],
 })

@@ -2,12 +2,10 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
-
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 const env = process.env.NODE_ENV || 'development';
-
 dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) });
 
 async function bootstrap() {
@@ -24,20 +22,11 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.use(cookieParser());
   app.enableCors({
-    origin: (origin, callback) => {
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'https://your-frontend-domain.com',
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin || '*');
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: 'http://localhost:5173', 
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization',
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'],
   });
   await app.listen(process.env.PORT ?? 3000);
 }

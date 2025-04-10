@@ -47,11 +47,12 @@ export class AuthService {
     });
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24,
+      path: '/',
     });
-    return newUser; // User only, token in cookie
+    return newUser;
   }
 
   async signIn(email: string, password: string, res: Response): Promise<User> {

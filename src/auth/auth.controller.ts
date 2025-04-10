@@ -22,17 +22,16 @@ import { AuthGuard } from '@nestjs/passport';
 import { plainToClass } from 'class-transformer';
 import { JwtAuthGuard } from './jwt.guard';
 
-// Interface for JwtAuthGuard (matches JwtCookieStrategy payload)
+
 interface JwtAuthenticatedRequest extends Request {
   user: { id: number; email: string };
 }
 
-// Interface for GoogleStrategy (matches Google auth data)
-interface GoogleAuthenticatedRequest extends Request {
-  user: { id: string; email: string; username?: string }; // googleId as string
-}
 
-// @Serialize(ResponseUserDto)
+interface GoogleAuthenticatedRequest extends Request {
+  user: { id: string; email: string; username?: string }; 
+
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -68,9 +67,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async signIn(
     @Body() body: SignInUserDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<User> {
-    return this.authService.signIn(body.email, body.password, res);
+    @Res() res: Response,
+  ) {
+    const user = await this.authService.signIn(body.email, body.password, res);
+    console.log('Sending response with headers:', res.getHeaders());
+    res.status(HttpStatus.OK).json(user);
   }
 
   @Post('signout')

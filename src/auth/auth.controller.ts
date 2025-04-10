@@ -31,7 +31,7 @@ interface JwtAuthenticatedRequest extends Request {
 interface GoogleAuthenticatedRequest extends Request {
   user: { id: string; email: string; username?: string }; 
 
-
+}
 @Controller('auth')
 export class AuthController {
   constructor(

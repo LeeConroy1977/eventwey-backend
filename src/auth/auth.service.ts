@@ -73,13 +73,13 @@ export class AuthService {
     }
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
+      secure: false, // change when hosting frontend
       sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24,
       path: '/',
     });
-    console.log('Cookie set in signIn:', token); // Debug
-    console.log('Response headers before return:', res.getHeaders()); // Debug
+    console.log('Cookie set in signIn:', token); 
+    console.log('Response headers before return:', res.getHeaders());
     return this.userRepository.findOne({
       where: { id: user.id },
       loadRelationIds: true,

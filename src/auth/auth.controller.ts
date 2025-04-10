@@ -32,7 +32,7 @@ interface GoogleAuthenticatedRequest extends Request {
   user: { id: string; email: string; username?: string }; // googleId as string
 }
 
-@Serialize(ResponseUserDto)
+// @Serialize(ResponseUserDto)
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -100,6 +100,6 @@ export class AuthController {
       { googleId, email, username },
       res,
     );
-    return user; 
+    return user;
   }
 }

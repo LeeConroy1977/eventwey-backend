@@ -64,8 +64,7 @@ export class ResponseUserDto {
   @Expose()
   aboutMeStatus: string;
 
-  // Exclude the role as it's sensitive
-  @Exclude()
+  @Expose()
   role: string;
 
   @Expose()
@@ -73,15 +72,15 @@ export class ResponseUserDto {
   adminGroups: Group[];
 
   @Expose()
-  @Type(() => AppEvent) // Ensure to serialize nested events correctly
+  @Type(() => AppEvent)
   events: AppEvent[];
 
   @Expose()
-  @Type(() => Group) // Ensure to serialize nested groups correctly
+  @Type(() => Group)
   groups: Group[];
 
   @Expose()
-  @Type(() => User) // Serialize connections as Users
+  @Type(() => User)
   connections: User[];
 
   @Expose()

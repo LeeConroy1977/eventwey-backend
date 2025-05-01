@@ -94,9 +94,7 @@ export class UsersController {
     return notifications;
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  @UsePipes(new ValidationPipe({ transform: true }))
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,

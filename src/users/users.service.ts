@@ -201,25 +201,30 @@ export class UsersService {
 
     return user.notifications;
   }
-  async updateUser(id: number, attrs: Partial<User>) {
+  async updateUser(id: number, attrs: Partial<User>): Promise<User> {
+    console.log('Updating user ID:', id, 'with attrs:', attrs);
     const user = await this.findUserById(id);
-
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-
     if (attrs.tags !== undefined) {
+      console.log('Setting tags:', attrs.tags);
       user.tags = attrs.tags;
     }
-
     Object.assign(user, attrs);
-
-    await this.repo.save(user);
-
-    return await this.repo.findOne({
+    try {
+      await this.repo.save(user);
+      console.log('User saved successfully');
+    } catch (error) {
+      console.error('Error saving user:', error);
+      throw error;
+    }
+    const updatedUser = await this.repo.findOne({
       where: { id },
       loadRelationIds: true,
     });
+    console.log('Returning updated user:', updatedUser);
+    return updatedUser;
   }
 
   async removeUser(id: number) {

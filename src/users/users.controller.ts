@@ -14,6 +14,8 @@ import {
   UnauthorizedException,
   UseGuards,
   UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { UsersService } from './users.service';
@@ -93,13 +95,30 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch('/:id')
+  @Patch(':id')
+  @UsePipes(new ValidationPipe({ transform: true }))
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateUserDto,
-  ) {
-    const user = await this.usersService.updateUser(id, body);
-    return user;
+    @Body() updateUserDto: UpdateUserDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<User> {
+    console.log(
+      'PATCH request - ID:',
+      id,
+      'Body:',
+      updateUserDto,
+      'User:',
+      req.user,
+    );
+    if (req.user.id !== id) {
+      throw new ForbiddenException('You can only update your own profile');
+    }
+    try {
+      return await this.usersService.updateUser(id, updateUserDto);
+    } catch (error) {
+      console.error('Error in updateUser controller:', error);
+      throw error;
+    }
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Group } from '../entities/group.entity';
 import { User } from '../entities/user.entity';
 import { Notification } from '../entities/notification.entity';
 import { AppEvent } from '../entities/event.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -202,28 +202,86 @@ export class UsersService {
     return user.notifications;
   }
   async updateUser(id: number, attrs: Partial<User>): Promise<User> {
-    console.log('Updating user ID:', id, 'with attrs:', attrs);
+    console.log('Updating user ID:', id, 'with attrs:', JSON.stringify(attrs, null, 2));
     const user = await this.findUserById(id);
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+    if (attrs.email) {
+      const existingUser = await this.repo.findOne({ where: { email: attrs.email } });
+      if (existingUser && existingUser.id !== id) {
+        throw new BadRequestException('Email already exists');
+      }
     }
     if (attrs.tags !== undefined) {
-      console.log('Setting tags:', attrs.tags);
-      user.tags = attrs.tags;
+      if (!Array.isArray(attrs.tags) || !attrs.tags.every(tag => typeof tag === 'string')) {
+        throw new BadRequestException('Tags must be an array of strings');
+      }
     }
-    Object.assign(user, attrs);
+    if (attrs.events !== undefined) {
+      if (!Array.isArray(attrs.events) || !attrs.events.every(id => typeof id === 'number')) {
+        throw new BadRequestException('Events must be an array of event IDs');
+      }
+      const validEvents = await this.eventRepository.count({ where: { id: In(attrs.events) } });
+      if (validEvents !== attrs.events.length) {
+        throw new BadRequestException('One or more event IDs are invalid');
+      }
+    }
+ 
+    const updateData: Partial<User> = {
+      email: attrs.email,
+      username: attrs.username,
+      password: attrs.password,
+      googleId: attrs.googleId,
+      authMethod: attrs.authMethod,
+      profileBackgroundImage: attrs.profileBackgroundImage,
+      profileImage: attrs.profileImage,
+      aboutMe: attrs.aboutMe,
+      bio: attrs.bio,
+      tags: attrs.tags,
+      viewEventsStatus: attrs.viewEventsStatus,
+      viewConnectionsStatus: attrs.viewConnectionsStatus,
+      viewGroupsStatus: attrs.viewGroupsStatus,
+      viewTagsStatus: attrs.viewTagsStatus,
+      viewProfileImage: attrs.viewProfileImage,
+      viewBioStatus: attrs.viewBioStatus,
+      aboutMeStatus: attrs.aboutMeStatus,
+      role: attrs.role,
+    };
+ 
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+    console.log('Update data:', JSON.stringify(updateData, null, 2));
     try {
-      await this.repo.save(user);
-      console.log('User saved successfully');
+      await this.repo
+        .createQueryBuilder()
+        .update(User)
+        .set(updateData)
+        .where('id = :id', { id })
+        .execute();
+      console.log('User scalar fields updated successfully');
+      if (attrs.events !== undefined) {
+        await this.repo
+          .createQueryBuilder()
+          .relation(User, 'events')
+          .of(id)
+          .set(attrs.events);
+        console.log('User events updated successfully');
+      }
     } catch (error) {
-      console.error('Error saving user:', error);
-      throw error;
+      console.error('Error updating user:', error.message, error.stack);
+      if (error.code === '23505') {
+        throw new BadRequestException('Email already exists');
+      }
+      if (error.code === '23502' && error.column === 'userId') {
+        throw new BadRequestException('Invalid notification data: userId cannot be null');
+      }
+      throw new InternalServerErrorException(`Failed to update user: ${error.message}`);
     }
     const updatedUser = await this.repo.findOne({
       where: { id },
       loadRelationIds: true,
     });
-    console.log('Returning updated user:', updatedUser);
+    if (!updatedUser) {
+      throw new NotFoundException(`User with ID ${id} not found after update`);
+    }
+    console.log('Returning updated user:', JSON.stringify(updatedUser, null, 2));
     return updatedUser;
   }
 

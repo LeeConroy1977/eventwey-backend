@@ -124,7 +124,9 @@ export class User {
   @OneToMany(() => Connection, (connection) => connection.recipient)
   receivedConnections: Connection[];
 
-  @OneToMany(() => Notification, (notification) => notification.user)
+  @OneToMany(() => Notification, (notification) => notification.user, {
+    cascade: ['insert', 'remove'],
+  })
   notifications: Notification[];
 
   @OneToMany(() => Comment, (comment) => comment.user)

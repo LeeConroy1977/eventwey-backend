@@ -224,7 +224,7 @@ export class UsersService {
         throw new BadRequestException('One or more event IDs are invalid');
       }
     }
- 
+    // Prepare update data for scalar fields only
     const updateData: Partial<User> = {
       email: attrs.email,
       username: attrs.username,
@@ -245,10 +245,11 @@ export class UsersService {
       aboutMeStatus: attrs.aboutMeStatus,
       role: attrs.role,
     };
- 
+    // Remove undefined fields
     Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
     console.log('Update data:', JSON.stringify(updateData, null, 2));
     try {
+      // Update scalar fields using query builder
       await this.repo
         .createQueryBuilder()
         .update(User)
@@ -256,6 +257,7 @@ export class UsersService {
         .where('id = :id', { id })
         .execute();
       console.log('User scalar fields updated successfully');
+      // Update events relationship separately if provided
       if (attrs.events !== undefined) {
         await this.repo
           .createQueryBuilder()
@@ -264,15 +266,15 @@ export class UsersService {
           .set(attrs.events);
         console.log('User events updated successfully');
       }
-    } catch (error) {
-      console.error('Error updating user:', error.message, error.stack);
-      if (error.code === '23505') {
+    } catch (error: any) { // Use 'any' for now, or define a custom error type
+      console.error('Error updating user:', error?.message || String(error), error?.stack || '');
+      if (error?.code === '23505') {
         throw new BadRequestException('Email already exists');
       }
-      if (error.code === '23502' && error.column === 'userId') {
+      if (error?.code === '23502' && error?.column === 'userId') {
         throw new BadRequestException('Invalid notification data: userId cannot be null');
       }
-      throw new InternalServerErrorException(`Failed to update user: ${error.message}`);
+      throw new InternalServerErrorException(`Failed to update user: ${error?.message || String(error)}`);
     }
     const updatedUser = await this.repo.findOne({
       where: { id },

@@ -13,18 +13,18 @@ export class Notification {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' }) 
+  @ManyToOne(() => User, (user) => user.notifications, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'userId' })
   user: User;
-
-  @Column()
-  userId: number; 
 
   @Column()
   senderId: number;
 
   @Column()
-  type: string; 
+  type: string;
 
   @Column()
   message: string;
@@ -33,7 +33,7 @@ export class Notification {
   eventId: number;
 
   @Column({ default: false })
-  isRead: boolean; 
+  isRead: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

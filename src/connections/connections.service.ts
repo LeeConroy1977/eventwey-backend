@@ -126,6 +126,7 @@ export class ConnectionsService {
         'requester.groups',
         'requester.adminGroups',
       ],
+      loadRelationIds: true,
     });
 
     return requests;

@@ -134,7 +134,6 @@ export class ConnectionsService {
   async getUserConnections(userId: number) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['connections'],
       loadRelationIds: true,
     });
 

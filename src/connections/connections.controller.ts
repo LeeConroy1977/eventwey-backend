@@ -67,12 +67,12 @@ export class ConnectionsController {
       eventId,
     );
   }
-
+  @Serialize(ResponseUserDto)
   @Get(':userId')
   getUserConnections(@Param('userId') userId: number): Promise<User[]> {
     return this.connectionsService.getUserConnections(userId);
   }
-
+  @Serialize(ResponseUserDto)
   @Get(':userId/requests')
   findUserRequests(@Param('userId') userId: number) {
     return this.connectionsService.findUserRequests(userId);

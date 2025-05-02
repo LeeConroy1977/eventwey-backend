@@ -128,7 +128,7 @@ export class ConnectionsService {
       ],
     });
 
-    return requests.map((connection) => connection.requester);
+    return requests;
   }
 
   async getUserConnections(userId: number) {

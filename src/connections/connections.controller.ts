@@ -72,6 +72,11 @@ export class ConnectionsController {
     return this.connectionsService.getUserConnections(userId);
   }
 
+  @Get(':userId/requests')
+  findUserRequests(@Param('userId') userId: number) {
+    return this.connectionsService.findUserRequests(userId);
+  }
+
   @Delete(':userId/remove/:connectionId')
   removeConnection(
     @Param('userId') userId: number,

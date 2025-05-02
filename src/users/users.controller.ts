@@ -101,7 +101,7 @@ export class UsersController {
     return user;
   }
 
-  @UseGuards(JwtAuthGuard)
+
   @Delete('/:id')
   async removeUser(@Param('id', ParseIntPipe) id: number) {
     const user = await this.usersService.removeUser(id);

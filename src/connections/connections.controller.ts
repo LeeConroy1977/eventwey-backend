@@ -15,6 +15,7 @@ import { ResponseUserDto } from '../users/dtos/response-user-dto';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { User } from 'src/entities/user.entity';
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
@@ -68,7 +69,7 @@ export class ConnectionsController {
   }
 
   @Get(':userId')
-  getUserConnections(@Param('userId') userId: number) {
+  getUserConnections(@Param('userId') userId: number): Promise<User[]> {
     return this.connectionsService.getUserConnections(userId);
   }
 

@@ -222,67 +222,74 @@ export class EventsService {
     return group;
   }
 
-  async createEvent(body: CreateEventDto): Promise<any> {
-    const groupDto = await this.groupService.findGroupById(body.group);
-    if (!groupDto) {
-      throw new NotFoundException(`Group with ID ${body.group} not found`);
-    }
-
-    const group = await this.groupRepository.findOne({
-      where: { id: body.group },
-      relations: ['groupAdmins'],
-    });
-    if (!group) {
-      throw new NotFoundException(`Group with ID ${body.group} not found`);
-    }
-
-    if (!body.title || !body.category || !body.date || !body.location) {
-      throw new BadRequestException('All required fields must be provided');
-    }
-
-    const date =
-      typeof body.date === 'string' ? new Date(body.date) : new Date(body.date);
-    if (isNaN(date.getTime())) {
-      throw new BadRequestException('Invalid date provided');
-    }
-
-    const newEvent = this.repo.create({
-      ...body,
-      date: date.getTime(),
-      group,
-      attendees: [],
-    });
-
-    const groupMembers = await this.groupService.findGroupMembers(group.id);
-    console.log(groupMembers, 'group membersxxxxxxxx');
-
-    const groupOrganisor = group.groupAdmins?.[0] || null;
-    if (!groupOrganisor) {
-      console.log('No group organiser found');
-    }
-
-    if (groupOrganisor) {
-      for (const groupMember of groupMembers) {
-        await this.notificationsService.createNotification(
-          groupMember.id,
-          groupOrganisor.id,
-          'new-group-event',
-          `${group.name} has created a new event: ${body.title}`,
-        );
-      }
-    }
-    const savedEvent = await this.repo.save(newEvent);
-    return {
-      ...savedEvent,
-      date: savedEvent.date,
-      attendees: savedEvent.attendees.map((attendee) => attendee.id),
-      group: {
-        ...savedEvent.group,
-        events: savedEvent.group.events.map((e) => e.id),
-        members: savedEvent.group.members.map((m) => m.id),
-      },
-    };
+async createEvent(body: CreateEventDto): Promise<any> {
+  const groupDto = await this.groupService.findGroupById(body.group);
+  if (!groupDto) {
+    throw new NotFoundException(`Group with ID ${body.group} not found`);
   }
+
+  const group = await this.groupRepository.findOne({
+    where: { id: body.group },
+    relations: ['groupAdmins', 'members', 'events'], 
+  });
+  if (!group) {
+    throw new NotFoundException(`Group with ID ${body.group} not found`);
+  }
+
+  if (!body.title || !body.category || !body.date || !body.location) {
+    throw new BadRequestException('All required fields must be provided');
+  }
+
+  const date =
+    typeof body.date === 'string' ? new Date(body.date) : new Date(body.date);
+  if (isNaN(date.getTime())) {
+    throw new BadRequestException('Invalid date provided');
+  }
+
+  const newEvent = this.repo.create({
+    ...body,
+    date: date.getTime(),
+    group,
+    attendees: [],
+  });
+
+  const groupMembers = await this.groupService.findGroupMembers(group.id);
+  console.log('groupMembers:', groupMembers);
+
+  const groupOrganisor = group.groupAdmins?.[0] || null;
+  if (groupOrganisor && Array.isArray(groupMembers) && groupMembers.length > 0) {
+    for (const groupMember of groupMembers) {
+      await this.notificationsService.createNotification(
+        groupMember.id,
+        groupOrganisor.id,
+        'new-group-event',
+        `${group.name} has created a new event: ${body.title}`,
+      );
+    }
+  } else {
+    console.log('No group organiser or no group members found for notifications');
+  }
+
+  const savedEvent = await this.repo.save(newEvent);
+  console.log('savedEvent:', savedEvent);
+
+  return {
+    ...savedEvent,
+    date: savedEvent.date,
+    attendees: Array.isArray(savedEvent.attendees)
+      ? savedEvent.attendees.map((attendee) => attendee.id)
+      : [],
+    group: {
+      ...savedEvent.group,
+      events: Array.isArray(savedEvent.group.events)
+        ? savedEvent.group.events.map((e) => e.id)
+        : [],
+      members: Array.isArray(savedEvent.group.members)
+        ? savedEvent.group.members.map((m) => m.id)
+        : [],
+    },
+  };
+}
 
   async updateEvent(
     eventId: number,

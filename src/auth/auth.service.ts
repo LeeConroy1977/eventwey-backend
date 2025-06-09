@@ -55,11 +55,12 @@ export class AuthService {
     return newUser;
   }
 
-  async signIn(email: string, password: string, res: Response): Promise<User> {
+  async signIn(email: string, password: string, res: Response): Promise<any> {
     const user = await this.usersService.findUserByEmail(email);
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
     const passwordMatch = await this.comparePassword({
       password,
       hash: user.password,
@@ -67,22 +68,18 @@ export class AuthService {
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid password');
     }
+
     const token = await this.assignToken({ id: user.id, email: user.email });
     if (!token) {
       throw new ForbiddenException('No access token');
     }
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: false, // change when hosting frontend
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24,
-      path: '/',
-    });
-    console.log('Cookie set in signIn:', token); 
-    console.log('Response headers before return:', res.getHeaders());
-    return this.userRepository.findOne({
-      where: { id: user.id },
-      loadRelationIds: true,
+
+    return res.json({
+      user: await this.userRepository.findOne({
+        where: { id: user.id },
+        loadRelationIds: true,
+      }),
+      token,
     });
   }
 

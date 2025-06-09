@@ -48,7 +48,7 @@ export class AuthService {
     res.cookie('token', token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24,
       path: '/',
     });
@@ -74,7 +74,7 @@ export class AuthService {
     res.cookie('token', token, {
       httpOnly: true,
       secure: false, // change when hosting frontend
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 24,
       path: '/',
     });

@@ -192,19 +192,19 @@ export class EventsService {
     };
   }
 
-  async findEventAttendees(eventId: number) {
+  async findEventAttendees(eventId: number): Promise<User[]> {
     const event = await this.findEventById(eventId);
 
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    const attendees = await this.userRepository.find({
-      where: {
-        events: In([eventId]), // Filter users whose events include the given eventId
-      },
-      loadRelationIds: true, // Loads only the IDs of related entities
-    });
+    const attendees = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.events', 'event')
+      .where('event.id = :eventId', { eventId })
+      .loadAllRelationIds({ relations: ['events'] })
+      .getMany();
 
     return attendees;
   }

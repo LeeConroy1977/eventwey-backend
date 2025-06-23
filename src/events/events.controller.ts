@@ -104,7 +104,8 @@ export class EventsController {
     }
 
     const priceBand = event.priceBands?.find(
-      (band) => band.type === ticketType,
+      (band) =>
+        band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
     );
     if (!priceBand) {
       throw new BadRequestException(

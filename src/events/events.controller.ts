@@ -103,6 +103,9 @@ export class EventsController {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
+    console.log('constroller Available types:', event.priceBands.map((b) => b.type));
+console.log('constroller Looking for:', ticketType);
+
     const priceBand =  event.priceBands?.find(
       (band) =>
         band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),

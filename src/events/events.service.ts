@@ -371,6 +371,12 @@ export class EventsService {
         throw new BadRequestException('Ticket type is required for this event');
       }
 
+      console.log(
+        'Available types:',
+        event.priceBands.map((b) => b.type),
+      );
+      console.log('Looking for:', ticketType);
+
       const priceBand = event.priceBands.find(
         (band) =>
           band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),

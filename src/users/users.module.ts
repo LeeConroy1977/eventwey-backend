@@ -13,6 +13,7 @@ import { Comment } from '../entities/comment.entity';
 import { GroupsService } from '../groups/groups.service';
 import { EventsService } from '../events/events.service';
 import { Group } from '../entities/group.entity';
+import { StripeModule } from 'src/stripe/stripe.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { Group } from '../entities/group.entity';
     forwardRef(() => EventsModule),
     forwardRef(() => NotificationsModule),
     forwardRef(() => GroupsModule),
+    forwardRef(() => StripeModule),
   ],
   controllers: [UsersController],
   providers: [UsersService, GroupsService, EventsService],

@@ -180,7 +180,7 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'],
+      relations: ['group', 'attendees', 'priceBands'],
     });
 
     if (!event) {

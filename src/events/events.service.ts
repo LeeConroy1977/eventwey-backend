@@ -181,6 +181,24 @@ export class EventsService {
     const event = await this.repo.findOne({
       where: { id: eventId },
       relations: ['group', 'attendees'],
+      select: [
+        'id',
+        'image',
+        'date',
+        'startTime',
+        'title',
+        'duration',
+        'going',
+        'capacity',
+        'availability',
+        'free',
+        'priceBands', 
+        'tags',
+        'category',
+        'description',
+        'location',
+        'approved',
+      ],
     });
 
     if (!event) {
@@ -189,7 +207,7 @@ export class EventsService {
 
     return {
       ...event,
-      date: event.date, 
+      date: event.date,
       attendees: event.attendees.map((attendee) => attendee.id),
     };
   }

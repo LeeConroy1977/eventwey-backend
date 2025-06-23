@@ -1,26 +1,61 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import Stripe from 'stripe';
 
 @Injectable()
 export class StripeService {
-  constructor(@Inject('STRIPE_CLIENT') private stripe: Stripe) {}
+  private stripe: Stripe;
 
-  async createPaymentIntent(
-    amount: number,
-    currency: string,
-    metadata: { eventId: string; userId: string; ticketType: string },
-  ): Promise<Stripe.PaymentIntent> {
-    return this.stripe.paymentIntents.create({
-      amount: amount * 100, // Convert to cents
-      currency,
-      payment_method_types: ['card'],
-      metadata,
+  constructor() {
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-05-28.basil',
     });
   }
 
-  async retrievePaymentIntent(
-    paymentIntentId: string,
-  ): Promise<Stripe.PaymentIntent> {
-    return this.stripe.paymentIntents.retrieve(paymentIntentId);
+  async createPaymentIntent(
+    amountInCents: number,
+    currency: string,
+    metadata: any,
+  ) {
+    console.log('StripeService createPaymentIntent:', {
+      amountInCents,
+      currency,
+      metadata,
+    });
+    try {
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: amountInCents, // Already in cents, no further conversion
+        currency,
+        metadata,
+      });
+      console.log('Created payment intent:', {
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        metadata: paymentIntent.metadata,
+      });
+      return paymentIntent;
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      throw new BadRequestException('Failed to create payment intent');
+    }
+  }
+
+  async retrievePaymentIntent(paymentIntentId: string) {
+    try {
+      const paymentIntent =
+        await this.stripe.paymentIntents.retrieve(paymentIntentId);
+      console.log('Retrieved payment intent:', {
+        id: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+        metadata: paymentIntent.metadata,
+      });
+      return paymentIntent;
+    } catch (error) {
+      console.error('Error retrieving payment intent:', error);
+      throw new BadRequestException('Failed to retrieve payment intent');
+    }
   }
 }

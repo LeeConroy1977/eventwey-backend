@@ -23,6 +23,7 @@ import { Message } from './entities/message.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth/auth.service';
 import { JwtAuthGuard } from './auth/jwt.guard';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
   imports: [
@@ -107,6 +108,7 @@ import { JwtAuthGuard } from './auth/jwt.guard';
     EventsModule,
     GroupsModule,
     CommentsModule,
+    StripeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

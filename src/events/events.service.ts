@@ -13,6 +13,7 @@ import { Group } from '../entities/group.entity';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { StripeService } from 'src/stripe/stripe.service';
 
 @Injectable()
 export class EventsService {
@@ -25,6 +26,7 @@ export class EventsService {
     private readonly groupRepository: Repository<Group>,
     private groupService: GroupsService,
     private notificationsService: NotificationsService,
+    private stripeService: StripeService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -326,6 +328,7 @@ export class EventsService {
     eventId: number,
     userId: number,
     ticketType?: string,
+    paymentIntentId?: string,
   ): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
@@ -379,19 +382,37 @@ export class EventsService {
         );
       }
 
+      if (!paymentIntentId) {
+        throw new BadRequestException(
+          'Payment intent ID is required for paid events',
+        );
+      }
+
+      // Verify the payment intent
+      const paymentIntent =
+        await this.stripeService.retrievePaymentIntent(paymentIntentId);
+      if (
+        paymentIntent.status !== 'succeeded' ||
+        paymentIntent.amount !== parseFloat(priceBand.price) * 100
+      ) {
+        throw new BadRequestException('Invalid or unsuccessful payment');
+      }
+
       priceBand.ticketCount -= 1;
       updateData.priceBands = [...event.priceBands];
       updateData.availability = event.availability - 1;
       updateData.going = (event.going || 0) + 1;
     }
+
     event.attendees.push(user);
 
-    const updatedEvent = await this.updateEvent(eventId, {
+    const updatedEvent = await this.repo.save({
+      ...event,
       ...updateData,
       attendees: event.attendees,
     });
 
-    return updatedEvent; 
+    return updatedEvent;
   }
 
   async leaveEvent(
@@ -401,7 +422,7 @@ export class EventsService {
   ): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'], 
+      relations: ['group', 'attendees'],
     });
 
     if (!event) {

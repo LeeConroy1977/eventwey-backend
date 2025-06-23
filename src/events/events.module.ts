@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { GroupsModule } from '../groups/groups.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { StripeModule } from 'src/stripe/stripe.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     forwardRef(() => UsersModule),
     forwardRef(() => GroupsModule),
     forwardRef(() => NotificationsModule),
+    forwardRef(() => StripeModule),
   ],
   controllers: [EventsController],
   providers: [EventsService],

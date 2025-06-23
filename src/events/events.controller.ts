@@ -18,16 +18,40 @@ import { CreateEventDto } from './dtos/create-event-dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Request } from 'express';
 import { AppEvent } from '../entities/event.entity';
-import { StripeService } from 'src/stripe/stripe.service';
+import { StripeService } from '../stripe/stripe.service';
+import {
+  IsInt,
+  Min,
+  IsString,
+  IsNotEmpty,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ValidationPipe } from '@nestjs/common';
 
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
 }
 
-// ✅ Move this OUTSIDE the class
+// DTO for create-payment-intent
+class CreatePaymentIntentDto {
+  @IsInt()
+  @Min(1)
+  eventId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  ticketType: string;
+}
+
+// Move this OUTSIDE the class
 function parsePriceToCents(priceStr: string): number {
   const cleaned = priceStr.replace(/[^\d.]/g, '');
-  return Math.round(parseFloat(cleaned) * 100);
+  const price = parseFloat(cleaned);
+  if (isNaN(price)) {
+    throw new BadRequestException('Invalid price format');
+  }
+  return Math.round(price * 100); // Convert to cents
 }
 
 @Controller('events')
@@ -85,6 +109,12 @@ export class EventsController {
     @Body('paymentIntentId') paymentIntentId?: string,
   ): Promise<AppEvent> {
     const userId = req.user.id;
+    console.log('Join event request:', {
+      eventId,
+      userId,
+      ticketType,
+      paymentIntentId,
+    });
     return this.eventsService.addUserToEvent(
       eventId,
       userId,
@@ -96,7 +126,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   @Post('create-payment-intent')
   async createPaymentIntent(
-    @Body() body: { eventId: number; ticketType: string },
+    @Body(ValidationPipe) body: CreatePaymentIntentDto,
     @Req() req: AuthenticatedRequest,
   ) {
     const { eventId, ticketType } = body;
@@ -109,30 +139,31 @@ export class EventsController {
 
     console.log(
       'controller Available types:',
-      event.priceBands.map((b) => b.type),
+      event.priceBands?.map((b) => b.type) || [],
     );
     console.log('controller Looking for:', ticketType);
+
+    if (!event.free && (!event.priceBands || event.priceBands.length === 0)) {
+      throw new BadRequestException(
+        'No ticket types are available for this event',
+      );
+    }
 
     const priceBand = event.priceBands?.find(
       (band) =>
         band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
     );
-
     if (!priceBand) {
       throw new BadRequestException(
         `Ticket type "${ticketType}" is not available`,
       );
     }
 
-    const amountInPence = parsePriceToCents(priceBand.price);
-    if (isNaN(amountInPence)) {
-      throw new BadRequestException(
-        `Invalid price format for ticket type "${ticketType}"`,
-      );
-    }
+    const amountInCents = parsePriceToCents(priceBand.price); // e.g., "£10" -> 1000
+    console.log('Creating payment intent with amount (cents):', amountInCents);
 
     const paymentIntent = await this.stripeService.createPaymentIntent(
-      amountInPence,
+      amountInCents,
       'gbp',
       {
         eventId: eventId.toString(),

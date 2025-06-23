@@ -349,7 +349,6 @@ export class EventsService {
       throw new BadRequestException('User is already attending this event');
     }
 
-    // DEBUG LOG - remove in production
     console.log('Event priceBands:', event.priceBands);
     console.log('Requested ticketType:', ticketType);
 
@@ -400,19 +399,56 @@ export class EventsService {
         );
       }
 
-      const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, ''));
+      const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, '')); // e.g., 10
+      if (isNaN(priceNumber)) {
+        throw new BadRequestException('Invalid price format');
+      }
+
+      const expectedAmount = Math.round(priceNumber * 100); // e.g., 1000 cents
+      console.log('Expected amount (cents):', expectedAmount);
 
       const paymentIntent =
         await this.stripeService.retrievePaymentIntent(paymentIntentId);
-      if (
-        paymentIntent.status !== 'succeeded' ||
-        paymentIntent.amount !== priceNumber * 100
-      ) {
+      console.log('Retrieved payment intent:', {
+        id: paymentIntent?.id,
+        status: paymentIntent?.status,
+        amount: paymentIntent?.amount,
+        metadata: paymentIntent?.metadata,
+      });
+
+      if (!paymentIntent || paymentIntent.status !== 'succeeded') {
         throw new BadRequestException('Invalid or unsuccessful payment');
       }
 
-      priceBand.ticketCount -= 1;
+      if (paymentIntent.amount !== expectedAmount) {
+        console.log('Amount mismatch:', {
+          expected: expectedAmount,
+          actual: paymentIntent.amount,
+        });
+        throw new BadRequestException(
+          'Payment amount does not match ticket price',
+        );
+      }
 
+      // Validate metadata
+      if (
+        paymentIntent.metadata.eventId !== eventId.toString() ||
+        paymentIntent.metadata.ticketType?.trim().toLowerCase() !==
+          ticketType.trim().toLowerCase() ||
+        paymentIntent.metadata.userId !== userId.toString()
+      ) {
+        console.log('Metadata mismatch:', {
+          expected: {
+            eventId: eventId.toString(),
+            ticketType,
+            userId: userId.toString(),
+          },
+          actual: paymentIntent.metadata,
+        });
+        throw new BadRequestException('Payment intent metadata mismatch');
+      }
+
+      priceBand.ticketCount -= 1;
       updateData.priceBands = [...event.priceBands];
       updateData.availability = event.availability - 1;
       updateData.going = (event.going || 0) + 1;

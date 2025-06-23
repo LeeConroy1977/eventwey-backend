@@ -394,50 +394,57 @@ export class EventsService {
     return updatedEvent; // Already formatted by updateEvent
   }
 
-  async leaveEvent(eventId: number, userId: number): Promise<any> {
-    const event = await this.repo.findOne({
-      where: { id: eventId },
-      relations: ['group', 'attendees'],
-    });
+ async leaveEvent(eventId: number, userId: number, ticketType?: string): Promise<any> {
+  const event = await this.repo.findOne({
+    where: { id: eventId },
+    relations: ['group', 'attendees', 'priceBands'],
+  });
 
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    if (!event.attendees || event.attendees.length === 0) {
-      throw new NotFoundException('No attendees in this event');
-    }
-
-    const userExists = event.attendees.some(
-      (attendee) => attendee.id === userId,
-    );
-    if (!userExists) {
-      throw new NotFoundException('User not found in event attendees');
-    }
-
-    event.attendees = event.attendees.filter(
-      (attendee) => attendee.id !== userId,
-    );
-
-    const updateData: Partial<AppEvent> = {
-      attendees: event.attendees,
-      availability: event.availability + 1,
-      going: Math.max((event.going || 0) - 1, 0),
-    };
-
-    if (event.priceBands && Array.isArray(event.priceBands)) {
-      const priceBandIndex = event.priceBands.findIndex(
-        (p) => p.type === 'Standard',
-      );
-      if (priceBandIndex !== -1) {
-        event.priceBands[priceBandIndex].ticketCount += 1;
-        updateData.priceBands = [...event.priceBands];
-      }
-    }
-
-    const updatedEvent = await this.updateEvent(eventId, updateData);
-    return updatedEvent; // Already formatted by updateEvent
+  if (!event) {
+    throw new NotFoundException(`Event with ID ${eventId} not found`);
   }
+
+  const user = await this.userRepository.findOne({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundException(`User with ID ${userId} not found`);
+  }
+
+  if (!event.attendees || event.attendees.length === 0) {
+    throw new BadRequestException('No attendees in this event');
+  }
+
+  const userExists = event.attendees.some((attendee) => attendee.id === userId);
+  if (!userExists) {
+    throw new BadRequestException('User is not attending this event');
+  }
+
+  const updateData: Partial<AppEvent> = {
+    attendees: event.attendees.filter((attendee) => attendee.id !== userId),
+    availability: event.availability + 1,
+    going: Math.max((event.going || 0) - 1, 0),
+  };
+
+  if (!event.free) {
+    if (!event.priceBands || event.priceBands.length === 0) {
+      throw new BadRequestException('No ticket options available for this event');
+    }
+
+    if (!ticketType) {
+      throw new BadRequestException('Ticket type is required for paid events');
+    }
+
+    const priceBand = event.priceBands.find((band) => band.type === ticketType);
+    if (!priceBand) {
+      throw new BadRequestException(`Ticket type "${ticketType}" is not available`);
+    }
+
+    priceBand.ticketCount += 1;
+    updateData.priceBands = [...event.priceBands];
+  }
+
+  const updatedEvent = await this.updateEvent(eventId, updateData);
+  return updatedEvent; 
+}
 
   async deleteEvent(
     eventId: number,

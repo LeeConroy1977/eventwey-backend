@@ -17,7 +17,6 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Request } from 'express';
 import { AppEvent } from '../entities/event.entity';
 
-
 interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
 }
@@ -80,9 +79,13 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('/:id/leave')
-  async leaveEvent(@Param('id', ParseIntPipe) eventId: number, @Req() req) {
+  async leaveEvent(
+    @Param('id', ParseIntPipe) eventId: number,
+    @Req() req: AuthenticatedRequest,
+    @Query('ticketType') ticketType?: string,
+  ): Promise<AppEvent> {
     const userId = req.user.id;
-    return this.eventsService.leaveEvent(eventId, userId);
+    return this.eventsService.leaveEvent(eventId, userId, ticketType);
   }
 
   @UseGuards(JwtAuthGuard)

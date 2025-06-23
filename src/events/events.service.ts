@@ -180,7 +180,7 @@ export class EventsService {
   async findEventById(eventId: number) {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees', 'priceBands'],
+      relations: ['group', 'attendees'],
     });
 
     if (!event) {
@@ -189,7 +189,7 @@ export class EventsService {
 
     return {
       ...event,
-      date: event.date, // Already a timestamp
+      date: event.date, 
       attendees: event.attendees.map((attendee) => attendee.id),
     };
   }

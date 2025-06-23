@@ -114,7 +114,7 @@ export class EventsController {
 
     const paymentIntent = await this.stripeService.createPaymentIntent(
       parseFloat(priceBand.price),
-      'usd',
+      'gbp',
       { eventId: eventId.toString(), userId: userId.toString(), ticketType },
     );
 

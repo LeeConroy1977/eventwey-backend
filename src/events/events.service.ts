@@ -348,6 +348,10 @@ export class EventsService {
       throw new BadRequestException('User is already attending this event');
     }
 
+    // DEBUG LOG - remove in production
+    console.log('Event priceBands:', event.priceBands);
+    console.log('Requested ticketType:', ticketType);
+
     const updateData: Partial<AppEvent> = {};
 
     if (event.free) {
@@ -388,17 +392,22 @@ export class EventsService {
         );
       }
 
-      // Verify the payment intent
+
+      const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, ''));
+
+
       const paymentIntent =
         await this.stripeService.retrievePaymentIntent(paymentIntentId);
       if (
         paymentIntent.status !== 'succeeded' ||
-        paymentIntent.amount !== parseFloat(priceBand.price) * 100
+        paymentIntent.amount !== priceNumber * 100
       ) {
         throw new BadRequestException('Invalid or unsuccessful payment');
       }
 
+   
       priceBand.ticketCount -= 1;
+
       updateData.priceBands = [...event.priceBands];
       updateData.availability = event.availability - 1;
       updateData.going = (event.going || 0) + 1;

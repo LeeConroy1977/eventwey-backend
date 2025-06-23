@@ -317,7 +317,7 @@ export class EventsService {
     const updatedEvent = await this.repo.save(event);
     return {
       ...updatedEvent,
-      date: updatedEvent.date, // Already a timestamp
+      date: updatedEvent.date,
       attendees: updatedEvent.attendees.map((attendee) => attendee.id),
     };
   }
@@ -391,60 +391,74 @@ export class EventsService {
       attendees: event.attendees,
     });
 
-    return updatedEvent; // Already formatted by updateEvent
+    return updatedEvent; 
   }
 
- async leaveEvent(eventId: number, userId: number, ticketType?: string): Promise<any> {
-  const event = await this.repo.findOne({
-    where: { id: eventId },
-    relations: ['group', 'attendees', 'priceBands'],
-  });
+  async leaveEvent(
+    eventId: number,
+    userId: number,
+    ticketType?: string,
+  ): Promise<any> {
+    const event = await this.repo.findOne({
+      where: { id: eventId },
+      relations: ['group', 'attendees'], 
+    });
 
-  if (!event) {
-    throw new NotFoundException(`Event with ID ${eventId} not found`);
-  }
-
-  const user = await this.userRepository.findOne({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundException(`User with ID ${userId} not found`);
-  }
-
-  if (!event.attendees || event.attendees.length === 0) {
-    throw new BadRequestException('No attendees in this event');
-  }
-
-  const userExists = event.attendees.some((attendee) => attendee.id === userId);
-  if (!userExists) {
-    throw new BadRequestException('User is not attending this event');
-  }
-
-  const updateData: Partial<AppEvent> = {
-    attendees: event.attendees.filter((attendee) => attendee.id !== userId),
-    availability: event.availability + 1,
-    going: Math.max((event.going || 0) - 1, 0),
-  };
-
-  if (!event.free) {
-    if (!event.priceBands || event.priceBands.length === 0) {
-      throw new BadRequestException('No ticket options available for this event');
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    if (!ticketType) {
-      throw new BadRequestException('Ticket type is required for paid events');
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    const priceBand = event.priceBands.find((band) => band.type === ticketType);
-    if (!priceBand) {
-      throw new BadRequestException(`Ticket type "${ticketType}" is not available`);
+    if (!event.attendees || event.attendees.length === 0) {
+      throw new BadRequestException('No attendees in this event');
     }
 
-    priceBand.ticketCount += 1;
-    updateData.priceBands = [...event.priceBands];
+    const userExists = event.attendees.some(
+      (attendee) => attendee.id === userId,
+    );
+    if (!userExists) {
+      throw new BadRequestException('User is not attending this event');
+    }
+
+    const updateData: Partial<AppEvent> = {
+      attendees: event.attendees.filter((attendee) => attendee.id !== userId),
+      availability: event.availability + 1,
+      going: Math.max((event.going || 0) - 1, 0),
+    };
+
+    if (!event.free) {
+      if (!event.priceBands || event.priceBands.length === 0) {
+        throw new BadRequestException(
+          'No ticket options available for this event',
+        );
+      }
+
+      if (!ticketType) {
+        throw new BadRequestException(
+          'Ticket type is required for paid events',
+        );
+      }
+
+      const priceBand = event.priceBands.find(
+        (band) => band.type === ticketType,
+      );
+      if (!priceBand) {
+        throw new BadRequestException(
+          `Ticket type "${ticketType}" is not available`,
+        );
+      }
+
+      priceBand.ticketCount += 1;
+      updateData.priceBands = [...event.priceBands];
+    }
+
+    const updatedEvent = await this.updateEvent(eventId, updateData);
+    return updatedEvent;
   }
-
-  const updatedEvent = await this.updateEvent(eventId, updateData);
-  return updatedEvent; 
-}
 
   async deleteEvent(
     eventId: number,

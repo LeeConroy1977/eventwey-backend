@@ -372,7 +372,8 @@ export class EventsService {
       }
 
       const priceBand = event.priceBands.find(
-        (band) => band.type === ticketType,
+        (band) =>
+          band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
       );
       if (!priceBand) {
         throw new BadRequestException(
@@ -392,9 +393,7 @@ export class EventsService {
         );
       }
 
-
       const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, ''));
-
 
       const paymentIntent =
         await this.stripeService.retrievePaymentIntent(paymentIntentId);
@@ -405,7 +404,6 @@ export class EventsService {
         throw new BadRequestException('Invalid or unsuccessful payment');
       }
 
-   
       priceBand.ticketCount -= 1;
 
       updateData.priceBands = [...event.priceBands];

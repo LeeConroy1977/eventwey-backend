@@ -98,12 +98,12 @@ export class EventsController {
     const { eventId, ticketType } = body;
     const userId = req.user.id;
 
-    const event = await this.eventsService.findEventById(eventId); // Assume findOne exists
+    const event = await this.eventsService.findEventById(eventId); 
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    const priceBand = event.priceBands?.find(
+    const priceBand =  event.priceBands?.find(
       (band) =>
         band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
     );

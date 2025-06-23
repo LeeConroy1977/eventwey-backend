@@ -24,6 +24,12 @@ interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
 }
 
+// ✅ Move this OUTSIDE the class
+function parsePriceToCents(priceStr: string): number {
+  const cleaned = priceStr.replace(/[^\d.]/g, '');
+  return Math.round(parseFloat(cleaned) * 100);
+}
+
 @Controller('events')
 export class EventsController {
   constructor(
@@ -57,8 +63,7 @@ export class EventsController {
 
   @Get('/:id')
   async findEventById(@Param('id', ParseIntPipe) eventId: number) {
-    const event = await this.eventsService.findEventById(eventId);
-    return event;
+    return this.eventsService.findEventById(eventId);
   }
 
   @Get('/:id/attendees')
@@ -68,8 +73,7 @@ export class EventsController {
 
   @Get('/:id/group')
   async findEventGroup(@Param('id', ParseIntPipe) eventId: number) {
-    const group = await this.eventsService.findEventGroup(eventId);
-    return group;
+    return this.eventsService.findEventGroup(eventId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -98,28 +102,43 @@ export class EventsController {
     const { eventId, ticketType } = body;
     const userId = req.user.id;
 
-    const event = await this.eventsService.findEventById(eventId); 
+    const event = await this.eventsService.findEventById(eventId);
     if (!event) {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    console.log('constroller Available types:', event.priceBands.map((b) => b.type));
-console.log('constroller Looking for:', ticketType);
+    console.log(
+      'controller Available types:',
+      event.priceBands.map((b) => b.type),
+    );
+    console.log('controller Looking for:', ticketType);
 
-    const priceBand =  event.priceBands?.find(
+    const priceBand = event.priceBands?.find(
       (band) =>
         band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
     );
+
     if (!priceBand) {
       throw new BadRequestException(
         `Ticket type "${ticketType}" is not available`,
       );
     }
 
+    const amountInPence = parsePriceToCents(priceBand.price);
+    if (isNaN(amountInPence)) {
+      throw new BadRequestException(
+        `Invalid price format for ticket type "${ticketType}"`,
+      );
+    }
+
     const paymentIntent = await this.stripeService.createPaymentIntent(
-      parseFloat(priceBand.price),
+      amountInPence,
       'gbp',
-      { eventId: eventId.toString(), userId: userId.toString(), ticketType },
+      {
+        eventId: eventId.toString(),
+        userId: userId.toString(),
+        ticketType,
+      },
     );
 
     return {

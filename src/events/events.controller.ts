@@ -183,10 +183,15 @@ export class EventsController {
   async leaveEvent(
     @Param('id', ParseIntPipe) eventId: number,
     @Req() req: AuthenticatedRequest,
-    @Query('ticketType') ticketType?: string,
-  ): Promise<AppEvent> {
+  ): Promise<any> {
     const userId = req.user.id;
-    return this.eventsService.leaveEvent(eventId, userId, ticketType);
+    return this.eventsService.leaveEvent(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('backfill-payment-intents')
+  async backfillPaymentIntents() {
+    return this.eventsService.backfillPaymentIntents();
   }
 
   @UseGuards(JwtAuthGuard)

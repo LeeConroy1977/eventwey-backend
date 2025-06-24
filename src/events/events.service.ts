@@ -465,33 +465,18 @@ export class EventsService {
     return updatedEvent;
   }
 
-  async leaveEvent(
-    eventId: number,
-    userId: number,
-    ticketType?: string,
-  ): Promise<any> {
+  async leaveEvent(eventId: number, userId: number): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'],
+      relations: ['group', 'attendees', 'priceBands'],
     });
-
-    if (!event) {
+    if (!event)
       throw new NotFoundException(`Event with ID ${eventId} not found`);
-    }
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
+    if (!user) throw new NotFoundException(`User with ID ${userId} not found`);
 
-    if (!event.attendees || event.attendees.length === 0) {
-      throw new BadRequestException('No attendees in this event');
-    }
-
-    const userExists = event.attendees.some(
-      (attendee) => attendee.id === userId,
-    );
-    if (!userExists) {
+    if (!event.attendees?.some((attendee) => attendee.id === userId)) {
       throw new BadRequestException('User is not attending this event');
     }
 
@@ -501,6 +486,7 @@ export class EventsService {
       going: Math.max((event.going || 0) - 1, 0),
     };
 
+    let refund;
     if (!event.free) {
       if (!event.priceBands || event.priceBands.length === 0) {
         throw new BadRequestException(
@@ -508,27 +494,58 @@ export class EventsService {
         );
       }
 
-      if (!ticketType) {
-        throw new BadRequestException(
-          'Ticket type is required for paid events',
+      const paymentIntent =
+        await this.stripeService.findPaymentIntentByMetadata(
+          eventId.toString(),
+          userId.toString(),
         );
+      let ticketType = paymentIntent?.metadata.ticketType;
+      let priceBand;
+      let refundAmount;
+
+      if (ticketType) {
+        priceBand = event.priceBands.find(
+          (band) =>
+            band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
+        );
+        if (!priceBand) {
+          console.warn(`Ticket type "${ticketType}" not found, using default`);
+          priceBand = event.priceBands[0];
+          ticketType = priceBand?.type;
+        }
+      } else {
+        priceBand = event.priceBands[0];
+        ticketType = priceBand?.type;
       }
 
-      const priceBand = event.priceBands.find(
-        (band) => band.type === ticketType,
-      );
       if (!priceBand) {
-        throw new BadRequestException(
-          `Ticket type "${ticketType}" is not available`,
-        );
+        throw new BadRequestException('No valid price band available');
       }
 
+      refundAmount = parseFloat(priceBand.price.replace(/[^0-9.]/g, '')) * 100;
       priceBand.ticketCount += 1;
       updateData.priceBands = [...event.priceBands];
+
+      if (paymentIntent) {
+        try {
+          refund = await this.stripeService.createRefund({
+            paymentIntentId: paymentIntent.id,
+            amount: refundAmount,
+            reason: 'requested_by_customer',
+            idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
+          });
+        } catch (error) {
+          console.error('Refund failed:', error.message);
+        }
+      } else {
+        console.warn(
+          `No PaymentIntent found for event ${eventId}, user ${userId}`,
+        );
+      }
     }
 
     const updatedEvent = await this.updateEvent(eventId, updateData);
-    return updatedEvent;
+    return { updatedEvent, refund };
   }
 
   async deleteEvent(
@@ -568,5 +585,76 @@ export class EventsService {
 
     await this.repo.delete(eventId);
     return { message: `Event ${eventId} has been successfully deleted` };
+  }
+
+  async backfillPaymentIntents() {
+    const events = await this.repo.find({
+      relations: ['attendees', 'priceBands'],
+    });
+    const results = [];
+
+    for (const event of events) {
+      if (event.free) continue;
+
+      const attendees = event.attendees || [];
+      for (const user of attendees) {
+        const existingIntent =
+          await this.stripeService.findPaymentIntentByMetadata(
+            event.id.toString(),
+            user.id.toString(),
+          );
+        if (existingIntent) {
+          results.push({
+            eventId: event.id,
+            userId: user.id,
+            paymentIntentId: existingIntent.id,
+            status: 'skipped (already exists)',
+          });
+          continue;
+        }
+
+        const priceBand = event.priceBands?.[0];
+        if (!priceBand) {
+          results.push({
+            eventId: event.id,
+            userId: user.id,
+            status: 'skipped (no priceBands)',
+          });
+          continue;
+        }
+
+        const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, ''));
+        if (isNaN(priceNumber)) {
+          results.push({
+            eventId: event.id,
+            userId: user.id,
+            status: 'skipped (invalid price)',
+          });
+          continue;
+        }
+        const amount = Math.round(priceNumber * 100);
+
+        const paymentIntent = await this.stripeService.createPaymentIntent(
+          amount,
+          'gbp',
+          {
+            eventId: event.id.toString(),
+            userId: user.id.toString(),
+            ticketType: priceBand.type,
+          },
+        );
+
+        await this.stripeService.confirmPaymentIntent(paymentIntent.id);
+
+        results.push({
+          eventId: event.id,
+          userId: user.id,
+          paymentIntentId: paymentIntent.id,
+          status: 'created',
+        });
+      }
+    }
+
+    return { message: 'Backfill complete', results };
   }
 }

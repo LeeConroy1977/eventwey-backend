@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -540,7 +541,6 @@ export class EventsService {
           } else {
             console.error('Refund failed: Unknown error');
           }
-      
         }
       } else {
         console.warn(
@@ -592,73 +592,121 @@ export class EventsService {
   }
 
   async backfillPaymentIntents() {
-    const events = await this.repo.find({
-      relations: ['attendees', 'priceBands'],
-    });
-    const results = [];
+    try {
+      const events = await this.repo.find({
+        relations: ['attendees', 'priceBands'],
+      });
+      const results = [];
 
-    for (const event of events) {
-      if (event.free) continue;
+      for (const event of events) {
+        if (event.free) continue;
 
-      const attendees = event.attendees || [];
-      for (const user of attendees) {
-        const existingIntent =
-          await this.stripeService.findPaymentIntentByMetadata(
-            event.id.toString(),
-            user.id.toString(),
-          );
-        if (existingIntent) {
-          results.push({
-            eventId: event.id,
-            userId: user.id,
-            paymentIntentId: existingIntent.id,
-            status: 'skipped (already exists)',
-          });
-          continue;
+        const attendees = event.attendees || [];
+        for (const user of attendees) {
+          try {
+            const existingIntent =
+              await this.stripeService.findPaymentIntentByMetadata(
+                event.id.toString(),
+                user.id.toString(),
+              );
+            if (existingIntent) {
+              results.push({
+                eventId: event.id,
+                userId: user.id,
+                paymentIntentId: existingIntent.id,
+                status: 'skipped (already exists)',
+              });
+              continue;
+            }
+
+            if (
+              !Array.isArray(event.priceBands) ||
+              event.priceBands.length === 0
+            ) {
+              results.push({
+                eventId: event.id,
+                userId: user.id,
+                status: 'skipped (no priceBands)',
+              });
+              continue;
+            }
+
+            const priceBand = event.priceBands[0];
+            if (typeof priceBand.price !== 'string') {
+              results.push({
+                eventId: event.id,
+                userId: user.id,
+                status: 'skipped (invalid price)',
+              });
+              continue;
+            }
+
+            const priceNumber = parseFloat(
+              priceBand.price.replace(/[^0-9.]/g, ''),
+            );
+            if (isNaN(priceNumber)) {
+              results.push({
+                eventId: event.id,
+                userId: user.id,
+                status: 'skipped (invalid price)',
+              });
+              continue;
+            }
+            const amount = Math.round(priceNumber * 100);
+
+            const paymentIntent = await this.stripeService.createPaymentIntent(
+              amount,
+              'gbp',
+              {
+                eventId: event.id.toString(),
+                userId: user.id.toString(),
+                ticketType: priceBand.type,
+              },
+            );
+
+            try {
+              await this.stripeService.confirmPaymentIntent(paymentIntent.id);
+            } catch (error) {
+              console.error(
+                `Error confirming PaymentIntent for event ${event.id}, user ${user.id}:`,
+                error,
+              );
+              results.push({
+                eventId: event.id,
+                userId: user.id,
+                status: 'error (confirmation)',
+                errorMessage: error.message,
+              });
+              continue;
+            }
+
+            results.push({
+              eventId: event.id,
+              userId: user.id,
+              paymentIntentId: paymentIntent.id,
+              status: 'created',
+            });
+          } catch (error) {
+            console.error(
+              `Error processing attendee ${user.id} for event ${event.id}:`,
+              error,
+            );
+            results.push({
+              eventId: event.id,
+              userId: user.id,
+              status: 'error',
+              errorMessage: error.message,
+            });
+          }
         }
-
-        const priceBand = event.priceBands?.[0];
-        if (!priceBand) {
-          results.push({
-            eventId: event.id,
-            userId: user.id,
-            status: 'skipped (no priceBands)',
-          });
-          continue;
-        }
-
-        const priceNumber = parseFloat(priceBand.price.replace(/[^0-9.]/g, ''));
-        if (isNaN(priceNumber)) {
-          results.push({
-            eventId: event.id,
-            userId: user.id,
-            status: 'skipped (invalid price)',
-          });
-          continue;
-        }
-        const amount = Math.round(priceNumber * 100);
-
-        const paymentIntent = await this.stripeService.createPaymentIntent(
-          amount,
-          'gbp',
-          {
-            eventId: event.id.toString(),
-            userId: user.id.toString(),
-            ticketType: priceBand.type,
-          },
-        );
-
-        await this.stripeService.confirmPaymentIntent(paymentIntent.id);
-
-        results.push({
-          eventId: event.id,
-          userId: user.id,
-          paymentIntentId: paymentIntent.id,
-          status: 'created',
-        });
       }
-    }
 
-    return { message: 'Backfill complete', results };
+      return { message: 'Backfill complete', results };
+    } catch (error) {
+      console.error('Error in backfillPaymentIntents:', error);
+      throw new InternalServerErrorException(
+        'Failed to backfill payment intents',
+      );
+    }
   }
 }

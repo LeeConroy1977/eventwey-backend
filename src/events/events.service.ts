@@ -469,7 +469,7 @@ export class EventsService {
   async leaveEvent(eventId: number, userId: number): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees'], // Remove priceBands
+      relations: ['group', 'attendees'],
     });
     if (!event)
       throw new NotFoundException(`Event with ID ${eventId} not found`);
@@ -489,15 +489,10 @@ export class EventsService {
 
     let refund;
     if (!event.free) {
-      // Fetch priceBands separately if needed
-      const priceBands = await this.repo
-        .createQueryBuilder('event')
-        .leftJoinAndSelect('event.priceBands', 'priceBands')
-        .where('event.id = :id', { id: eventId })
-        .getOne()
-        .then((e) => e?.priceBands || []);
+      const priceBands = event.priceBands || [];
+      console.log('Event priceBands:', priceBands); // Debug log
 
-      if (!priceBands || priceBands.length === 0) {
+      if (!Array.isArray(priceBands) || priceBands.length === 0) {
         console.warn(
           `No priceBands for event ${eventId}, proceeding without refund`,
         );
@@ -534,29 +529,37 @@ export class EventsService {
             'No valid price band available, proceeding without refund',
           );
         } else {
-          refundAmount =
-            parseFloat(priceBand.price.replace(/[^0-9.]/g, '')) * 100;
-          priceBand.ticketCount += 1;
-          updateData.priceBands = [...priceBands];
+          const priceNumber = parseFloat(
+            priceBand.price.replace(/[^0-9.]/g, ''),
+          );
+          if (isNaN(priceNumber) || priceNumber <= 0) {
+            console.warn(
+              `Invalid price for event ${eventId}, priceBand ${priceBand.type}`,
+            );
+          } else {
+            refundAmount = Math.round(priceNumber * 100);
+            priceBand.ticketCount += 1;
+            updateData.priceBands = [...priceBands];
 
-          if (paymentIntent) {
-            try {
-              refund = await this.stripeService.createRefund({
-                paymentIntentId: paymentIntent.id,
-                amount: refundAmount,
-                reason: 'requested_by_customer',
-                idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
-              });
-            } catch (error: unknown) {
-              console.error(
-                'Refund failed:',
-                error instanceof Error ? error.message : 'Unknown error',
+            if (paymentIntent) {
+              try {
+                refund = await this.stripeService.createRefund({
+                  paymentIntentId: paymentIntent.id,
+                  amount: refundAmount,
+                  reason: 'requested_by_customer',
+                  idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
+                });
+              } catch (error: unknown) {
+                console.error(
+                  'Refund failed:',
+                  error instanceof Error ? error.message : 'Unknown error',
+                );
+              }
+            } else {
+              console.warn(
+                `No PaymentIntent found for event ${eventId}, user ${userId}`,
               );
             }
-          } else {
-            console.warn(
-              `No PaymentIntent found for event ${eventId}, user ${userId}`,
-            );
           }
         }
       }

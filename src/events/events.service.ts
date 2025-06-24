@@ -666,7 +666,7 @@ export class EventsService {
 
             try {
               await this.stripeService.confirmPaymentIntent(paymentIntent.id);
-            } catch (error) {
+            } catch (error: unknown) {
               console.error(
                 `Error confirming PaymentIntent for event ${event.id}, user ${user.id}:`,
                 error,
@@ -675,7 +675,8 @@ export class EventsService {
                 eventId: event.id,
                 userId: user.id,
                 status: 'error (confirmation)',
-                errorMessage: error.message,
+                errorMessage:
+                  error instanceof Error ? error.message : 'Unknown error',
               });
               continue;
             }
@@ -686,7 +687,7 @@ export class EventsService {
               paymentIntentId: paymentIntent.id,
               status: 'created',
             });
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(
               `Error processing attendee ${user.id} for event ${event.id}:`,
               error,
@@ -695,14 +696,15 @@ export class EventsService {
               eventId: event.id,
               userId: user.id,
               status: 'error',
-              errorMessage: error.message,
+              errorMessage:
+                error instanceof Error ? error.message : 'Unknown error',
             });
           }
         }
       }
 
       return { message: 'Backfill complete', results };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error in backfillPaymentIntents:', error);
       throw new InternalServerErrorException(
         'Failed to backfill payment intents',

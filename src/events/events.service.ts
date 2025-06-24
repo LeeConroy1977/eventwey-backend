@@ -534,8 +534,13 @@ export class EventsService {
             reason: 'requested_by_customer',
             idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
           });
-        } catch (error) {
-          console.error('Refund failed:', error.message);
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error('Refund failed:', error.message);
+          } else {
+            console.error('Refund failed: Unknown error');
+          }
+      
         }
       } else {
         console.warn(
@@ -547,7 +552,6 @@ export class EventsService {
     const updatedEvent = await this.updateEvent(eventId, updateData);
     return { updatedEvent, refund };
   }
-
   async deleteEvent(
     eventId: number,
     userId: number,

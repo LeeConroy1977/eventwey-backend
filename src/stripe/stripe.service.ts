@@ -36,8 +36,12 @@ export class StripeService {
         metadata: paymentIntent.metadata,
       });
       return paymentIntent;
-    } catch (error) {
-      console.error('Error creating payment intent:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error creating payment intent:', error.message);
+      } else {
+        console.error('Error creating payment intent: Unknown error');
+      }
       throw new BadRequestException('Failed to create payment intent');
     }
   }
@@ -54,8 +58,12 @@ export class StripeService {
         metadata: paymentIntent.metadata,
       });
       return paymentIntent;
-    } catch (error) {
-      console.error('Error retrieving payment intent:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error retrieving payment intent:', error.message);
+      } else {
+        console.error('Error retrieving payment intent: Unknown error');
+      }
       throw new BadRequestException('Failed to retrieve payment intent');
     }
   }
@@ -87,8 +95,12 @@ export class StripeService {
         status: refund.status,
       });
       return refund;
-    } catch (error) {
-      console.error('Error creating refund:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error creating refund:', error.message);
+      } else {
+        console.error('Error creating refund: Unknown error');
+      }
       throw new BadRequestException('Failed to create refund');
     }
   }
@@ -118,8 +130,17 @@ export class StripeService {
         );
       }
       return paymentIntent || null;
-    } catch (error) {
-      console.error('Error finding payment intent by metadata:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(
+          'Error finding payment intent by metadata:',
+          error.message,
+        );
+      } else {
+        console.error(
+          'Error finding payment intent by metadata: Unknown error',
+        );
+      }
       return null;
     }
   }
@@ -137,8 +158,12 @@ export class StripeService {
         status: paymentIntent.status,
       });
       return paymentIntent;
-    } catch (error) {
-      console.error('Error confirming payment intent:', error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error confirming payment intent:', error.message);
+      } else {
+        console.error('Error confirming payment intent: Unknown error');
+      }
       throw new BadRequestException('Failed to confirm payment intent');
     }
   }

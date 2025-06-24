@@ -469,7 +469,7 @@ export class EventsService {
   async leaveEvent(eventId: number, userId: number): Promise<any> {
     const event = await this.repo.findOne({
       where: { id: eventId },
-      relations: ['group', 'attendees', 'priceBands'],
+      relations: ['group', 'attendees'], // Remove priceBands
     });
     if (!event)
       throw new NotFoundException(`Event with ID ${eventId} not found`);
@@ -489,63 +489,76 @@ export class EventsService {
 
     let refund;
     if (!event.free) {
-      if (!event.priceBands || event.priceBands.length === 0) {
-        throw new BadRequestException(
-          'No ticket options available for this event',
-        );
-      }
+      // Fetch priceBands separately if needed
+      const priceBands = await this.repo
+        .createQueryBuilder('event')
+        .leftJoinAndSelect('event.priceBands', 'priceBands')
+        .where('event.id = :id', { id: eventId })
+        .getOne()
+        .then((e) => e?.priceBands || []);
 
-      const paymentIntent =
-        await this.stripeService.findPaymentIntentByMetadata(
-          eventId.toString(),
-          userId.toString(),
+      if (!priceBands || priceBands.length === 0) {
+        console.warn(
+          `No priceBands for event ${eventId}, proceeding without refund`,
         );
-      let ticketType = paymentIntent?.metadata.ticketType;
-      let priceBand;
-      let refundAmount;
+      } else {
+        const paymentIntent =
+          await this.stripeService.findPaymentIntentByMetadata(
+            eventId.toString(),
+            userId.toString(),
+          );
+        let ticketType = paymentIntent?.metadata.ticketType;
+        let priceBand;
+        let refundAmount;
 
-      if (ticketType) {
-        priceBand = event.priceBands.find(
-          (band) =>
-            band.type.trim().toLowerCase() === ticketType.trim().toLowerCase(),
-        );
-        if (!priceBand) {
-          console.warn(`Ticket type "${ticketType}" not found, using default`);
-          priceBand = event.priceBands[0];
+        if (ticketType) {
+          priceBand = priceBands.find(
+            (band) =>
+              band.type.trim().toLowerCase() ===
+              ticketType.trim().toLowerCase(),
+          );
+          if (!priceBand) {
+            console.warn(
+              `Ticket type "${ticketType}" not found, using default`,
+            );
+            priceBand = priceBands[0];
+            ticketType = priceBand?.type;
+          }
+        } else {
+          priceBand = priceBands[0];
           ticketType = priceBand?.type;
         }
-      } else {
-        priceBand = event.priceBands[0];
-        ticketType = priceBand?.type;
-      }
 
-      if (!priceBand) {
-        throw new BadRequestException('No valid price band available');
-      }
+        if (!priceBand) {
+          console.warn(
+            'No valid price band available, proceeding without refund',
+          );
+        } else {
+          refundAmount =
+            parseFloat(priceBand.price.replace(/[^0-9.]/g, '')) * 100;
+          priceBand.ticketCount += 1;
+          updateData.priceBands = [...priceBands];
 
-      refundAmount = parseFloat(priceBand.price.replace(/[^0-9.]/g, '')) * 100;
-      priceBand.ticketCount += 1;
-      updateData.priceBands = [...event.priceBands];
-
-      if (paymentIntent) {
-        try {
-          refund = await this.stripeService.createRefund({
-            paymentIntentId: paymentIntent.id,
-            amount: refundAmount,
-            reason: 'requested_by_customer',
-            idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
-          });
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            console.error('Refund failed:', error.message);
+          if (paymentIntent) {
+            try {
+              refund = await this.stripeService.createRefund({
+                paymentIntentId: paymentIntent.id,
+                amount: refundAmount,
+                reason: 'requested_by_customer',
+                idempotencyKey: `${eventId}-${userId}-${Date.now()}`,
+              });
+            } catch (error: unknown) {
+              console.error(
+                'Refund failed:',
+                error instanceof Error ? error.message : 'Unknown error',
+              );
+            }
           } else {
-            console.error('Refund failed: Unknown error');
+            console.warn(
+              `No PaymentIntent found for event ${eventId}, user ${userId}`,
+            );
           }
         }
-      } else {
-        console.warn(
-          `No PaymentIntent found for event ${eventId}, user ${userId}`,
-        );
       }
     }
 
@@ -593,13 +606,31 @@ export class EventsService {
 
   async backfillPaymentIntents() {
     try {
-      const events = await this.repo.find({
-        relations: ['attendees', 'priceBands'],
-      });
+      const events = await this.repo.find({ relations: ['attendees'] }); // Remove priceBands from relations
       const results = [];
 
       for (const event of events) {
-        if (event.free) continue;
+        if (event.free) {
+          results.push({
+            eventId: event.id,
+            status: 'skipped (free event)',
+          });
+          continue;
+        }
+
+        // Check if priceBands exists and is an array
+        if (
+          !event.priceBands ||
+          !Array.isArray(event.priceBands) ||
+          event.priceBands.length === 0
+        ) {
+          console.warn(`No priceBands for event ${event.id}, using default`);
+          results.push({
+            eventId: event.id,
+            status: 'skipped (no priceBands)',
+          });
+          continue;
+        }
 
         const attendees = event.attendees || [];
         for (const user of attendees) {
@@ -619,24 +650,12 @@ export class EventsService {
               continue;
             }
 
-            if (
-              !Array.isArray(event.priceBands) ||
-              event.priceBands.length === 0
-            ) {
-              results.push({
-                eventId: event.id,
-                userId: user.id,
-                status: 'skipped (no priceBands)',
-              });
-              continue;
-            }
-
             const priceBand = event.priceBands[0];
-            if (typeof priceBand.price !== 'string') {
+            if (!priceBand || typeof priceBand.price !== 'string') {
               results.push({
                 eventId: event.id,
                 userId: user.id,
-                status: 'skipped (invalid price)',
+                status: 'skipped (invalid priceBand)',
               });
               continue;
             }
@@ -644,7 +663,7 @@ export class EventsService {
             const priceNumber = parseFloat(
               priceBand.price.replace(/[^0-9.]/g, ''),
             );
-            if (isNaN(priceNumber)) {
+            if (isNaN(priceNumber) || priceNumber <= 0) {
               results.push({
                 eventId: event.id,
                 userId: user.id,
@@ -660,7 +679,7 @@ export class EventsService {
               {
                 eventId: event.id.toString(),
                 userId: user.id.toString(),
-                ticketType: priceBand.type,
+                ticketType: priceBand.type || 'General', // Fallback type
               },
             );
 

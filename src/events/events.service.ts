@@ -537,7 +537,7 @@ export class EventsService {
               `Invalid price for event ${eventId}, priceBand ${priceBand.type}`,
             );
           } else {
-            refundAmount = Math.round(priceNumber / 100);
+            refundAmount = Math.round(priceNumber);
             priceBand.ticketCount += 1;
             updateData.priceBands = [...priceBands];
 

@@ -145,6 +145,25 @@ export class ConnectionsService {
     return user.connections;
   }
 
+  async findUserSentRequests(userId: number) {
+    const requests = await this.connectionRepository.find({
+      where: {
+        requester: { id: userId },
+        status: 'pending',
+      },
+      relations: [
+        'recipient',
+        'recipient.connections',
+        'recipient.events',
+        'recipient.groups',
+        'recipient.adminGroups',
+      ],
+      loadRelationIds: true,
+    });
+
+    return requests;
+  }
+
   async inviteToEvent(
     senderId: number,
     recipientIds: number[],

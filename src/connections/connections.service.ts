@@ -105,20 +105,29 @@ export class ConnectionsService {
       await this.connectionRepository.remove(connection);
 
       try {
+        console.log(
+          `Querying notification for userId=${recipientId}, senderId=${senderId}, type=connection_request`,
+        );
         const notification = await this.notificationRepository.findOne({
           where: {
-            user: { id: recipientId }, 
+            user: { id: recipientId },
             senderId,
             type: 'connection_request',
           },
         });
 
         if (notification) {
+          console.log(
+            `Found notification: id=${notification.id}, userId=${notification.user.id}, senderId=${notification.senderId}`,
+          );
           await this.notificationRepository.remove(notification);
           try {
             const requester = await this.userRepository.findOne({
               where: { id: senderId },
             });
+            console.log(
+              `Sending WebSocket notification to recipientId=${recipientId}`,
+            );
             this.notificationsGateway.sendNotification(recipientId, senderId, {
               type: 'connection_request_cancelled',
               message: `Connection request from ${requester?.username || 'user'} has been cancelled`,
@@ -126,21 +135,28 @@ export class ConnectionsService {
           } catch (wsError) {
             console.warn('WebSocket notification failed:', wsError);
           }
+        } else {
+          console.log('No notification found for cancellation');
         }
       } catch (notificationError) {
         console.warn('Notification deletion failed:', notificationError);
       }
 
       return { message: 'Connection request cancelled successfully' };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error in cancelConnectionRequest:', {
-        error,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : error,
         userId,
         senderId,
         recipientId,
       });
       throw new InternalServerErrorException(
-        error.message || 'Failed to cancel connection request',
+        error instanceof Error
+          ? error.message
+          : 'Failed to cancel connection request',
       );
     }
   }

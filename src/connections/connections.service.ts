@@ -103,22 +103,41 @@ export class ConnectionsService {
       }
 
       await this.connectionRepository.remove(connection);
+      console.log(
+        `Connection deleted: requesterId=${senderId}, recipientId=${recipientId}`,
+      );
 
       try {
         console.log(
           `Querying notification for userId=${recipientId}, senderId=${senderId}, type=connection_request`,
         );
-        const notification = await this.notificationRepository.findOne({
-          where: {
-            user: { id: recipientId },
-            senderId,
-            type: 'connection_request',
-          },
-        });
+        let notification = null;
+        try {
+          notification = await this.notificationRepository.findOne({
+            where: {
+              user: { id: recipientId },
+              senderId,
+              type: 'connection_request',
+            },
+          });
+        } catch (relationError) {
+          console.warn(
+            'Relation query failed, trying direct userId query:',
+            relationError,
+          );
+          notification = await this.notificationRepository
+            .createQueryBuilder('notification')
+            .where('notification.userId = :recipientId', { recipientId })
+            .andWhere('notification.senderId = :senderId', { senderId })
+            .andWhere('notification.type = :type', {
+              type: 'connection_request',
+            })
+            .getOne();
+        }
 
         if (notification) {
           console.log(
-            `Found notification: id=${notification.id}, userId=${notification.user.id}, senderId=${notification.senderId}`,
+            `Found notification: id=${notification.id}, userId=${notification.user?.id || notification['userId']}, senderId=${notification.senderId}`,
           );
           await this.notificationRepository.remove(notification);
           try {

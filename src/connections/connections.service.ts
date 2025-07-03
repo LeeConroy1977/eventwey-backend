@@ -96,34 +96,40 @@ export class ConnectionsService {
           recipient: { id: recipientId },
           status: 'pending',
         },
-        relations: ['requester', 'recipient'],
       });
 
       if (!connection) {
         throw new NotFoundException('Connection request not found');
       }
 
-      const notification = await this.notificationRepository.findOne({
-        where: {
-          user: { id: recipientId },
-          senderId: senderId,
-          type: 'connection_request',
-        },
-      });
-
-      if (notification) {
-        await this.notificationRepository.remove(notification);
-        try {
-          this.notificationsGateway.sendNotification(recipientId, senderId, {
-            type: 'connection_request_cancelled',
-            message: `Connection request from ${connection.requester.username} has been cancelled`,
-          });
-        } catch (wsError) {
-          console.warn('WebSocket notification failed:', wsError);
-        }
-      }
-
       await this.connectionRepository.remove(connection);
+
+      try {
+        const notification = await this.notificationRepository.findOne({
+          where: {
+            user: { id: recipientId }, 
+            senderId,
+            type: 'connection_request',
+          },
+        });
+
+        if (notification) {
+          await this.notificationRepository.remove(notification);
+          try {
+            const requester = await this.userRepository.findOne({
+              where: { id: senderId },
+            });
+            this.notificationsGateway.sendNotification(recipientId, senderId, {
+              type: 'connection_request_cancelled',
+              message: `Connection request from ${requester?.username || 'user'} has been cancelled`,
+            });
+          } catch (wsError) {
+            console.warn('WebSocket notification failed:', wsError);
+          }
+        }
+      } catch (notificationError) {
+        console.warn('Notification deletion failed:', notificationError);
+      }
 
       return { message: 'Connection request cancelled successfully' };
     } catch (error) {
@@ -134,7 +140,7 @@ export class ConnectionsService {
         recipientId,
       });
       throw new InternalServerErrorException(
-        'Failed to cancel connection request',
+        error.message || 'Failed to cancel connection request',
       );
     }
   }

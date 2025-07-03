@@ -83,6 +83,20 @@ export class ConnectionsController {
     return this.connectionsService.findUserSentRequests(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Delete(`:senderId/cancel/:recipientId`)
+  cancelConnectionRequest(
+    @Req() req: AuthenticatedRequest,
+    @Param('senderId', ParseIntPipe) senderId: number,
+    @Param('recipientId', ParseIntPipe) recipientId: number,
+  ) {
+    return this.connectionsService.cancelConnectionRequest(
+      req.user.id,
+      senderId,
+      recipientId,
+    );
+  }
+
   @Delete(':userId/remove/:connectionId')
   removeConnection(
     @Param('userId') userId: number,

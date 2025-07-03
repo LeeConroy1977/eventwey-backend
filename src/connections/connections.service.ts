@@ -74,50 +74,69 @@ export class ConnectionsService {
     return connection;
   }
 
-
-  async cancelConnectionRequest(userId: number, senderId: number, recipientId: number) {
+  async cancelConnectionRequest(
+    userId: number,
+    senderId: number,
+    recipientId: number,
+  ) {
+    console.log(
+      `Attempting to cancel connection request: userId=${userId}, senderId=${senderId}, recipientId=${recipientId}`,
+    );
     if (userId !== senderId) {
       throw new UnauthorizedException(
-        'You can only cancel your own connection requests'
-      )
+        'You can only cancel your own connection requests',
+      );
     }
 
-    const connection  =  await this.connectionRepository.findOne({
-      where: {
-        requester: {id: senderId},
-        recipient: {id: recipientId},
-        status: 'pending'
-      },
-      relations: ['requester', 'recipient']
-    });
+    try {
+      const connection = await this.connectionRepository.findOne({
+        where: {
+          requester: { id: senderId },
+          recipient: { id: recipientId },
+          status: 'pending',
+        },
+        relations: ['requester', 'recipient'],
+      });
 
-    if (!connection) {
-      throw new NotFoundException('Connection request not found')
+      if (!connection) {
+        throw new NotFoundException('Connection request not found');
+      }
+
+      const notification = await this.notificationRepository.findOne({
+        where: {
+          user: { id: recipientId },
+          senderId: senderId,
+          type: 'connection_request',
+        },
+      });
+
+      if (notification) {
+        await this.notificationRepository.remove(notification);
+        try {
+          this.notificationsGateway.sendNotification(recipientId, senderId, {
+            type: 'connection_request_cancelled',
+            message: `Connection request from ${connection.requester.username} has been cancelled`,
+          });
+        } catch (wsError) {
+          console.warn('WebSocket notification failed:', wsError);
+        }
+      }
+
+      await this.connectionRepository.remove(connection);
+
+      return { message: 'Connection request cancelled successfully' };
+    } catch (error) {
+      console.error('Error in cancelConnectionRequest:', {
+        error,
+        userId,
+        senderId,
+        recipientId,
+      });
+      throw new InternalServerErrorException(
+        'Failed to cancel connection request',
+      );
     }
-
-    const notification = await this.notificationRepository.findOne({
-      where: {
-        user: {id: recipientId},
-        senderId: senderId,
-        type: 'connection_request',
-      },
-    });
-
-    if (notification) {
-      await this.notificationRepository.remove(notification);
-      this.notificationsGateway.sendNotification(recipientId, senderId, {
-        type: 'connection_request_cancelled',
-        message: `Connection request from ${connection.requester.username} has been cancelled`
-      })
-    }
-
-    await this.connectionRepository.remove(connection)
-
-    return {message: 'Connection request cancelled successfully'}
-
-
   }
-
 
   async updateConnectionStatus(
     requestId: number,

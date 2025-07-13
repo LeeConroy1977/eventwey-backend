@@ -97,6 +97,11 @@ export class ConnectionsService {
     console.log(
       `Attempting to cancel connection request: userId=${userId}, senderId=${senderId}, recipientId=${recipientId}`,
     );
+
+    if (!userId) {
+      throw new UnauthorizedException('No authenticated user found');
+    }
+
     if (userId !== senderId) {
       throw new UnauthorizedException(
         'You can only cancel your own connection requests',
@@ -111,8 +116,6 @@ export class ConnectionsService {
           status: 'pending',
         },
       });
-
-      const senderObj = await this.usersService.findUserById(senderId);
 
       if (!connection) {
         throw new NotFoundException('Connection request not found');
@@ -156,17 +159,6 @@ export class ConnectionsService {
             `Found notification: id=${notification.id}, userId=${notification.user?.id || notification['userId']}, senderId=${notification.senderId}`,
           );
           await this.notificationRepository.remove(notification);
-          try {
-            console.log(
-              `Sending WebSocket notification to recipientId=${recipientId}`,
-            );
-            this.notificationsGateway.sendNotification(recipientId, senderId, {
-              type: 'connection_request_cancelled',
-              message: `Connection request from ${senderObj?.username || 'user'} has been cancelled`,
-            });
-          } catch (wsError) {
-            console.warn('WebSocket notification failed:', wsError);
-          }
         } else {
           console.log('No notification found for cancellation');
         }

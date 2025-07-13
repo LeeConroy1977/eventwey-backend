@@ -36,11 +36,10 @@ export class ConnectionsService {
 
   async sendConnectionRequest(senderId: number, recipientId: number) {
     if (senderId === recipientId) {
-      throw new BadRequestException("You can't connect with yourself");
+      throw new BadRequestException(
+        'Cannot send connection request to yourself',
+      );
     }
-
-    const senderObj = await this.usersService.findUserById(senderId);
-    const recipientObj = await this.usersService.findUserById(recipientId);
 
     const existingConnection = await this.connectionRepository.findOne({
       where: [
@@ -51,6 +50,13 @@ export class ConnectionsService {
 
     if (existingConnection) {
       throw new BadRequestException('Connection request already exists');
+    }
+
+    const sender = await this.usersService.findUserById(senderId);
+    const recipient = await this.usersService.findUserById(recipientId);
+
+    if (!sender || !recipient) {
+      throw new NotFoundException('User not found');
     }
 
     const connection = this.connectionRepository.create({
@@ -65,28 +71,99 @@ export class ConnectionsService {
       recipientId,
       senderId,
       'connection_request',
-      `You have a new connection request from  ${senderObj.username}`,
+      `${sender.username} wants to connect with you`,
     );
 
     this.notificationsGateway.sendNotification(recipientId, senderId, {
       type: 'connection_request',
-      message: `You have a new connection request from ${senderObj.username}`,
+      message: `${sender.username} wants to connect with you`,
     });
 
     await this.notificationsService.createNotification(
       senderId,
       recipientId,
-
       'connection_request_sent',
-      `You have sent a connection request to ${recipientObj.username}`,
+      `You sent a connection request to ${recipient.username}`,
     );
 
     this.notificationsGateway.sendNotification(senderId, recipientId, {
       type: 'connection_request_sent',
-      message: `You have a new connection request from ${senderObj.username}`,
+      message: `You sent a connection request to ${recipient.username}`,
     });
 
-    return connection;
+    return { message: 'Connection request sent successfully' };
+  }
+
+  async updateConnectionStatus(
+    requestId: number,
+    status: 'accepted' | 'rejected',
+  ) {
+    const connection = await this.connectionRepository.findOne({
+      where: { id: requestId },
+      relations: ['requester', 'recipient'],
+    });
+
+    if (!connection) {
+      throw new NotFoundException('Connection request not found');
+    }
+
+    if (status === 'accepted') {
+      await this.addToConnections(
+        connection.requester.id,
+        connection.recipient.id,
+      );
+
+      await this.notificationsService.createNotification(
+        connection.recipient.id,
+        connection.requester.id,
+        'connection_accepted',
+        `You accepted ${connection.requester.username}'s connection request`,
+      );
+
+      this.notificationsGateway.sendNotification(
+        connection.recipient.id,
+        connection.requester.id,
+        {
+          type: 'connection_accepted',
+          message: `You accepted ${connection.requester.username}'s connection request`,
+        },
+      );
+
+      await this.notificationsService.createNotification(
+        connection.requester.id,
+        connection.recipient.id,
+        'connection_accepted',
+        `${connection.recipient.username} accepted your connection request`,
+      );
+
+      this.notificationsGateway.sendNotification(
+        connection.requester.id,
+        connection.recipient.id,
+        {
+          type: 'connection_accepted',
+          message: `${connection.recipient.username} accepted your connection request`,
+        },
+      );
+    } else if (status === 'rejected') {
+      await this.notificationsService.createNotification(
+        connection.recipient.id,
+        connection.requester.id,
+        'connection_rejected',
+        `You rejected ${connection.requester.username}'s connection request`,
+      );
+
+      this.notificationsGateway.sendNotification(
+        connection.recipient.id,
+        connection.requester.id,
+        {
+          type: 'connection_rejected',
+          message: `You rejected ${connection.requester.username}'s connection request`,
+        },
+      );
+    }
+
+    await this.connectionRepository.remove(connection);
+    return { message: `Connection request ${status}` };
   }
 
   async cancelConnectionRequest(
@@ -141,12 +218,12 @@ export class ConnectionsService {
           });
         } catch (relationError) {
           console.warn(
-            'Relation query failed, trying direct userId query:',
+            'Relation query failed, trying direct user_id query:',
             relationError,
           );
           notification = await this.notificationRepository
             .createQueryBuilder('notification')
-            .where('notification.userId = :recipientId', { recipientId })
+            .where('notification.user_id = :recipientId', { recipientId })
             .andWhere('notification.senderId = :senderId', { senderId })
             .andWhere('notification.type = :type', {
               type: 'connection_request',
@@ -156,14 +233,36 @@ export class ConnectionsService {
 
         if (notification) {
           console.log(
-            `Found notification: id=${notification.id}, userId=${notification.user?.id || notification['userId']}, senderId=${notification.senderId}`,
+            `Found notification: id=${notification.id}, userId=${notification.user?.id || notification['user_id']}, senderId=${notification.senderId}`,
           );
           await this.notificationRepository.remove(notification);
         } else {
           console.log('No notification found for cancellation');
         }
+      } catch (notificationError) {
+        console.warn(
+          'Recipient notification deletion failed:',
+          notificationError,
+        );
+      }
 
-        const recipientObj = await this.usersService.findUserById(recipientId);
+      let recipientObj;
+      try {
+        console.log(`Fetching recipient user: recipientId=${recipientId}`);
+        recipientObj = await this.usersService.findUserById(recipientId);
+      } catch (userError) {
+        console.warn(`Failed to fetch recipient user: ${userError.message}`);
+        recipientObj = { username: 'user' };
+      }
+
+      console.log('Creating notification for sender:', {
+        senderId,
+        recipientId,
+        type: 'connection_request_cancelled',
+        message: `You cancelled your connection request to ${recipientObj.username}`,
+      });
+
+      const senderNotification =
         await this.notificationsService.createNotification(
           senderId,
           recipientId,
@@ -171,12 +270,18 @@ export class ConnectionsService {
           `You cancelled your connection request to ${recipientObj.username}`,
         );
 
+      console.log('Notification created for sender:', {
+        id: senderNotification.id,
+      });
+
+      try {
+        console.log(`Sending WebSocket notification to senderId=${senderId}`);
         this.notificationsGateway.sendNotification(senderId, recipientId, {
           type: 'connection_request_cancelled',
           message: `You cancelled your connection request to ${recipientObj.username}`,
         });
-      } catch (notificationError) {
-        console.warn('Notification handling failed:', notificationError);
+      } catch (wsError) {
+        console.warn('WebSocket notification failed:', wsError);
       }
 
       return { message: 'Connection request cancelled successfully' };
@@ -196,66 +301,6 @@ export class ConnectionsService {
           : 'Failed to cancel connection request',
       );
     }
-  }
-
-  async updateConnectionStatus(
-    requestId: number,
-    status: 'accepted' | 'rejected',
-  ) {
-    const connection = await this.connectionRepository.findOne({
-      where: { id: requestId },
-      relations: ['requester', 'recipient'],
-    });
-
-    if (!connection) {
-      throw new NotFoundException('Connection request not found');
-    }
-
-    if (status === 'accepted') {
-      await this.addToConnections(
-        connection.requester.id,
-        connection.recipient.id,
-      );
-
-      await this.notificationsService.createNotification(
-        connection.requester.id,
-        connection.recipient.id,
-        'connection_accepted',
-        `${connection.recipient.username} accepted your connection request`,
-      );
-
-      this.notificationsGateway.sendNotification(
-        connection.requester.id,
-        connection.recipient.id,
-        {
-          type: 'connection_accepted',
-          message: `${connection.recipient.id} accepted your connection request`,
-        },
-      );
-    }
-
-    if (status === 'rejected') {
-      await this.notificationsService.createNotification(
-        connection.requester.id,
-        connection.recipient.id,
-
-        'connection_rejected',
-        `You have rejected the connection request from ${connection.requester.username}`,
-      );
-
-      this.notificationsGateway.sendNotification(
-        connection.requester.id,
-        connection.recipient.id,
-
-        {
-          type: 'connection_rejected',
-          message: `You have rejected the connection request from ${connection.requester.username}`,
-        },
-      );
-    }
-
-    await this.connectionRepository.remove(connection);
-    return { message: `Connection request ${status}` };
   }
 
   async findUserRequests(userId: number) {

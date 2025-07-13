@@ -251,7 +251,6 @@ export class ConnectionsService {
         console.log(`Fetching recipient user: recipientId=${recipientId}`);
         recipientObj = await this.usersService.findUserById(recipientId);
       } catch (userError) {
-        console.warn(`Failed to fetch recipient user: ${userError.message}`);
         recipientObj = { username: 'user' };
       }
 

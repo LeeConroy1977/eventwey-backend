@@ -1,6 +1,13 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "./user.entity";
-import { Like } from "./like.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { User } from './user.entity';
+import { Like } from './like.entity';
 
 @Entity()
 export class Comment {
@@ -11,10 +18,10 @@ export class Comment {
   content: string;
 
   @Column({ type: 'int', nullable: true })
-  groupId: number | null; 
+  groupId: number | null;
 
   @Column({ type: 'int', nullable: true })
-  eventId: number | null; 
+  eventId: number | null;
 
   @ManyToOne(() => User, (user) => user.comments, { eager: true })
   user: User;
@@ -28,10 +35,9 @@ export class Comment {
   @OneToMany(() => Like, (like) => like.comment)
   likes: Like[];
 
-  @Column({ default: 0 }) 
+  @Column({ default: 0 })
   likeCount: number;
 
   @CreateDateColumn()
-  createAt: Date
-
+  createdAt: Date;
 }

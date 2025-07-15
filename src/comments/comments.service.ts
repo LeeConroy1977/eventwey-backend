@@ -58,7 +58,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createAt: comment.createAt,
+      createdAt: comment.createAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -135,7 +135,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createAt: comment.createAt,
+      createdAt: comment.createAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -173,7 +173,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createAt: comment.createAt,
+      createdAt: comment.createAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -220,7 +220,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createAt: comment.createAt,
+      createdAt: comment.createAt,
       user: this.formatUser(user),
     };
 

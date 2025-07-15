@@ -58,7 +58,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createdAt: comment.createAt,
+      createdAt: comment.createdAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -124,7 +124,7 @@ export class CommentsService {
     const skip = (page - 1) * limit;
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { eventId },
-      order: { createAt: 'DESC' },
+      order: { createdAt: 'DESC' },
       skip,
       take: limit,
       relations: ['user'],
@@ -135,7 +135,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createdAt: comment.createAt,
+      createdAt: comment.createdAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -162,7 +162,7 @@ export class CommentsService {
     const skip = (page - 1) * limit;
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { groupId },
-      order: { createAt: 'DESC' },
+      order: { createdAt: 'DESC' },
       skip,
       take: limit,
       relations: ['user'],
@@ -173,7 +173,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createdAt: comment.createAt,
+      createdAt: comment.createdAt,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -220,7 +220,7 @@ export class CommentsService {
       groupId: comment.groupId,
       eventId: comment.eventId,
       likeCount: comment.likeCount,
-      createdAt: comment.createAt,
+      createdAt: comment.createdAt,
       user: this.formatUser(user),
     };
 

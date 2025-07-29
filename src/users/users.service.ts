@@ -87,7 +87,6 @@ export class UsersService {
   async findUserEvents(userId: number, filters: any): Promise<any[]> {
     const user = await this.repo.findOne({
       where: { id: userId },
-      relations: ['group'],
     });
 
     if (!user) {
@@ -97,10 +96,9 @@ export class UsersService {
     // Build query
     const query = this.eventRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.group', 'group')
+      .leftJoinAndSelect('event.group', 'group') // This will load the full group object
       .leftJoin('event.attendees', 'attendee')
-      .where('attendee.id = :userId', { userId })
-      .loadAllRelationIds();
+      .where('attendee.id = :userId', { userId });
 
     if (filters.category) {
       query.andWhere('event.category = :category', {

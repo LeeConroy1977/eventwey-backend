@@ -87,7 +87,7 @@ export class UsersService {
   async findUserEvents(userId: number, filters: any): Promise<any[]> {
     const user = await this.repo.findOne({
       where: { id: userId },
-      relations: ['groups'],
+      relations: ['group'],
     });
 
     if (!user) {

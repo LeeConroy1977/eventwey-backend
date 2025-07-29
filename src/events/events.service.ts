@@ -14,7 +14,7 @@ import { Group } from '../entities/group.entity';
 import { GroupsService } from '../groups/groups.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { StripeService } from 'src/stripe/stripe.service';
+import { StripeService } from '../stripe/stripe.service';
 
 @Injectable()
 export class EventsService {

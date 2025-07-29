@@ -35,22 +35,28 @@ import { StripeModule } from './stripe/stripe.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
         const env = process.env.NODE_ENV || 'development';
+        const entities = [
+          User,
+          Group,
+          AppEvent,
+          Connection,
+          Notification,
+          Comment,
+          Like,
+          Message,
+        ];
 
         if (env === 'test') {
           return {
-            type: 'sqlite',
-            database: ':memory:',
+            type: 'postgres',
+            host: configService.get<string>('DB_HOST'),
+            port: configService.get<number>('DB_PORT'),
+            username: configService.get<string>('DB_USERNAME'),
+            password: configService.get<string>('DB_PASSWORD'),
+            database: configService.get<string>('DB_NAME'),
             synchronize: true,
-            entities: [
-              User,
-              Group,
-              AppEvent,
-              Connection,
-              Notification,
-              Comment,
-              Like,
-              Message,
-            ],
+            logging: true,
+            entities,
           };
         }
 

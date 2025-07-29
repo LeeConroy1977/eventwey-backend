@@ -11,6 +11,7 @@ import { User } from '../entities/user.entity';
 import { Notification } from '../entities/notification.entity';
 import { AppEvent } from '../entities/event.entity';
 import { In, Repository } from 'typeorm';
+import { group } from 'console';
 
 @Injectable()
 export class UsersService {
@@ -86,6 +87,7 @@ export class UsersService {
   async findUserEvents(userId: number, filters: any): Promise<any[]> {
     const user = await this.repo.findOne({
       where: { id: userId },
+      relations: ['groups'],
     });
 
     if (!user) {

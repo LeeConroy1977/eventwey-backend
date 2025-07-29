@@ -96,8 +96,9 @@ export class UsersService {
     // Build query
     const query = this.eventRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.group', 'group') // This will load the full group object
+      .leftJoinAndSelect('event.group', 'group')
       .leftJoin('event.attendees', 'attendee')
+      .loadAllRelationIds({ relations: ['attendees'] })
       .where('attendee.id = :userId', { userId });
 
     if (filters.category) {
@@ -152,7 +153,6 @@ export class UsersService {
       }
     }
 
-    // Sorting
     if (filters.sort === 'oldest') {
       query.orderBy('event.date', 'ASC');
     } else if (filters.sort === 'newest') {
@@ -161,7 +161,6 @@ export class UsersService {
       query.andWhere('event.price = 0');
     }
 
-    // Pagination
     const limit = filters.limit ? parseInt(filters.limit, 10) : 10;
     const page = filters.page ? parseInt(filters.page, 10) : 1;
     query.skip((page - 1) * limit).take(limit);

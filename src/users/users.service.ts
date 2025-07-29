@@ -93,13 +93,18 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Build query
     const query = this.eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
-      .leftJoin('event.attendees', 'attendee')
-      .loadAllRelationIds({ relations: ['attendees'] })
-      .where('attendee.id = :userId', { userId });
+      .leftJoin('event.attendees', 'attendees')
+      .where('attendees.id = :userId', { userId })
+
+      .addSelect(
+        `(SELECT GROUP_CONCAT(a.id) FROM event_attendees_user ea 
+        JOIN user a ON ea.userId = a.id 
+        WHERE ea.eventId = event.id)`,
+        'attendeeIds',
+      );
 
     if (filters.category) {
       query.andWhere('event.category = :category', {
@@ -165,9 +170,14 @@ export class UsersService {
     const page = filters.page ? parseInt(filters.page, 10) : 1;
     query.skip((page - 1) * limit).take(limit);
 
-    const events = await query.getMany();
+    const events = await query.getRawMany();
 
-    return events;
+    return events.map((event) => ({
+      ...event,
+      attendees: event.attendeeIds
+        ? event.attendeeIds.split(',').map(Number)
+        : [],
+    }));
   }
 
   async findUserGroups(userId: number): Promise<Group[]> {

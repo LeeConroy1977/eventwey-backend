@@ -131,7 +131,7 @@ export class EventsService {
       let order: any = { date: 'ASC' };
       switch (sortBy) {
         case 'latest':
-          order = { date: 'DESC' };
+          order = { creattionDate: 'DESC' };
           break;
         case 'popular':
           order = { going: 'DESC' };

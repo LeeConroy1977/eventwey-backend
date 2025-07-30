@@ -79,8 +79,10 @@ export class EventsController {
     const pageNumber =
       isNaN(Number(page)) || Number(page) <= 0 ? 1 : Number(page);
 
+    console.log(search, 'searchParam');
+
     return this.eventsService.findAllEvents(
-      { date, category, sortBy,search },
+      { date, category, sortBy, search },
       { limit: limitNumber, page: pageNumber },
     );
   }

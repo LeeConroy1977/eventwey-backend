@@ -13,6 +13,14 @@ import { AppEvent } from '../entities/event.entity';
 import { In, Repository } from 'typeorm';
 import { group } from 'console';
 
+interface EventFilters {
+  category?: string;
+  dateRange?: string;
+  sort?: 'popular' | 'latest' | 'free';
+  limit?: string;
+  page?: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -84,27 +92,22 @@ export class UsersService {
     return connections;
   }
 
-  async findUserEvents(userId: number, filters: any): Promise<any[]> {
-    const user = await this.repo.findOne({
-      where: { id: userId },
-    });
+  async findUserEvents(userId: number, filters: EventFilters): Promise<any[]> {
+    if (isNaN(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
 
+    const user = await this.repo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     const query = this.eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
       .leftJoin('event.attendees', 'attendees')
-      .where('attendees.id = :userId', { userId })
-
-      .addSelect(
-        `(SELECT GROUP_CONCAT(a.id) FROM event_attendees_user ea 
-        JOIN user a ON ea.userId = a.id 
-        WHERE ea.eventId = event.id)`,
-        'attendeeIds',
-      );
+      .loadRelationIdAndMap('event.attendeeIds', 'event.attendees')
+      .where('attendees.id = :userId', { userId });
 
     if (filters.category) {
       query.andWhere('event.category = :category', {
@@ -119,65 +122,86 @@ export class UsersService {
 
       switch (filters.dateRange) {
         case 'today':
-          startDate = today;
+          startDate = new Date(today);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today);
           endDate.setHours(23, 59, 59, 999);
           break;
         case 'tomorrow':
           startDate = new Date(today);
           startDate.setDate(today.getDate() + 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(startDate);
           endDate.setHours(23, 59, 59, 999);
           break;
         case 'thisWeek':
-          startDate = today;
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - today.getDay());
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today);
-          endDate.setDate(today.getDate() + (7 - today.getDay()));
+          endDate.setDate(today.getDate() + (6 - today.getDay()));
+          endDate.setHours(23, 59, 59, 999);
           break;
         case 'nextWeek':
           startDate = new Date(today);
-          startDate.setDate(today.getDate() + (7 - today.getDay()) + 1);
+          startDate.setDate(today.getDate() + (7 - today.getDay()));
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(startDate);
           endDate.setDate(startDate.getDate() + 6);
+          endDate.setHours(23, 59, 59, 999);
           break;
         case 'thisMonth':
           startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          endDate.setHours(23, 59, 59, 999);
           break;
         case 'nextMonth':
           startDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          startDate.setHours(0, 0, 0, 0);
           endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+          endDate.setHours(23, 59, 59, 999);
           break;
+        default:
+          throw new BadRequestException(
+            `Invalid dateRange: ${filters.dateRange}`,
+          );
       }
 
       if (startDate && endDate) {
         query.andWhere('event.date BETWEEN :startDate AND :endDate', {
-          startDate,
-          endDate,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
         });
       }
     }
 
-    if (filters.sort === 'oldest') {
-      query.orderBy('event.date', 'ASC');
-    } else if (filters.sort === 'newest') {
+    if (filters.sort === 'popular') {
+      query.orderBy('event.attendees.length', 'DESC');
+    } else if (filters.sort === 'latest') {
       query.orderBy('event.date', 'DESC');
     } else if (filters.sort === 'free') {
       query.andWhere('event.price = 0');
     }
 
-    const limit = filters.limit ? parseInt(filters.limit, 10) : 10;
-    const page = filters.page ? parseInt(filters.page, 10) : 1;
+    const limit =
+      filters.limit && !isNaN(parseInt(filters.limit, 10))
+        ? parseInt(filters.limit, 10)
+        : 10;
+    const page =
+      filters.page && !isNaN(parseInt(filters.page, 10))
+        ? parseInt(filters.page, 10)
+        : 1;
+    if (limit <= 0 || page <= 0) {
+      throw new BadRequestException('Limit and page must be positive numbers');
+    }
     query.skip((page - 1) * limit).take(limit);
 
-    const events = await query.getRawMany();
+    console.log('Generated SQL:', query.getSql());
 
-    return events.map((event) => ({
-      ...event,
-      attendees: event.attendeeIds
-        ? event.attendeeIds.split(',').map(Number)
-        : [],
-    }));
+    const events = await query.getMany();
+
+    return events;
   }
 
   async findUserGroups(userId: number): Promise<Group[]> {

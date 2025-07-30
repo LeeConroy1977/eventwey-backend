@@ -11,6 +11,7 @@ import {
   Post,
   Query,
   Req,
+  Search,
   UseGuards,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
@@ -33,7 +34,6 @@ interface AuthenticatedRequest extends Request {
   user: { id: number; username: string; email: string };
 }
 
-// DTO for create-payment-intent
 class CreatePaymentIntentDto {
   @IsInt()
   @Min(1)
@@ -44,14 +44,13 @@ class CreatePaymentIntentDto {
   ticketType: string;
 }
 
-// Move this OUTSIDE the class
 function parsePriceToCents(priceStr: string): number {
   const cleaned = priceStr.replace(/[^\d.]/g, '');
   const price = parseFloat(cleaned);
   if (isNaN(price)) {
     throw new BadRequestException('Invalid price format');
   }
-  return Math.round(price * 100); // Convert to cents
+  return Math.round(price * 100);
 }
 
 @Controller('events')
@@ -71,6 +70,7 @@ export class EventsController {
     @Query('date') date: string,
     @Query('category') category: string,
     @Query('sortBy') sortBy: string,
+    @Query('search') search: string,
     @Query('limit') limit: string,
     @Query('page') page: string,
   ) {
@@ -80,7 +80,7 @@ export class EventsController {
       isNaN(Number(page)) || Number(page) <= 0 ? 1 : Number(page);
 
     return this.eventsService.findAllEvents(
-      { date, category, sortBy },
+      { date, category, sortBy,search },
       { limit: limitNumber, page: pageNumber },
     );
   }

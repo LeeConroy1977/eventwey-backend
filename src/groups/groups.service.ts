@@ -56,47 +56,76 @@ export class GroupsService {
   }
 
   async findAllGroups(pagination: {
-    limit: number;
-    page: number;
+    limit?: number;
+    page?: number;
     category?: string;
     sortBy?: string;
+    search?: string; // Added search parameter
   }): Promise<Group[]> {
-    let { limit, page, category, sortBy } = pagination;
+    let { limit, page, category, sortBy, search } = pagination;
 
     limit = limit || 15;
     page = page || 1;
 
+    if (isNaN(limit) || isNaN(page) || limit <= 0 || page <= 0) {
+      throw new BadRequestException('Limit and page must be positive numbers');
+    }
+
     const skip = (page - 1) * limit;
 
-    const queryOptions: any = {
-      skip: skip,
-      take: limit,
-      loadRelationIds: true,
-    };
+    const query = this.groupRepository
+      .createQueryBuilder('group')
+      .where('group.approved = :approved', { approved: true })
+      .loadAllRelationIds();
 
     if (category) {
-      queryOptions.where = { category };
+      query.andWhere('group.category = :category', { category });
+    }
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      query.andWhere(
+        `(
+          group.name ILIKE :searchTerm
+          ${
+            'description' in this.groupRepository.metadata.columns
+              ? ' OR group.description ILIKE :searchTerm'
+              : ''
+          }
+        )`,
+        { searchTerm },
+      );
     }
 
     if (sortBy) {
-      switch (sortBy) {
+      switch (sortBy.toLowerCase()) {
         case 'latest':
-          queryOptions.order = { createdAt: 'DESC' };
+          query.orderBy('group.createdAt', 'DESC');
           break;
         case 'popular':
-          queryOptions.order = { usersCount: 'DESC' };
+          query.orderBy('group.usersCount', 'DESC');
           break;
         case 'alphabetical':
-          queryOptions.order = { name: 'ASC' };
+          query.orderBy('group.name', 'ASC');
           break;
         default:
+          query.orderBy('group.createdAt', 'ASC');
           break;
       }
+    } else {
+      query.orderBy('group.createdAt', 'ASC');
     }
 
-    const groups = await this.groupRepository.find(queryOptions);
+    query.skip(skip).take(limit);
 
-    return groups;
+    console.log('Query conditions:', {
+      where: query.expressionMap.wheres,
+      order: query.expressionMap.orderBys,
+      skip,
+      take: limit,
+    });
+
+    return await query.getMany();
   }
 
   async findGroupById(id: number): Promise<GroupDto> {

@@ -51,6 +51,7 @@ export class GroupsController {
     @Query('page') page: string = '1',
     @Query('category') category?: string,
     @Query('sortBy') sortBy?: string,
+    @Query('search') search?: string,
   ) {
     const limitNumber =
       isNaN(Number(limit)) || Number(limit) <= 0 ? 15 : Number(limit);
@@ -60,6 +61,7 @@ export class GroupsController {
     return this.groupsService.findAllGroups({
       category,
       sortBy,
+      search,
       limit: limitNumber,
       page: pageNumber,
     });

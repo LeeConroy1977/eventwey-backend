@@ -48,32 +48,45 @@ export class EventsService {
   }
 
   async findAllEvents(
-    filters: { date?: string; category?: string; sortBy?: string },
+    filters: {
+      date?: string;
+      category?: string;
+      sortBy?: string;
+      search?: string;
+    },
     pagination: { limit?: number; page?: number } = { limit: 12, page: 1 },
   ): Promise<any[]> {
     try {
-      const { date, category, sortBy } = filters;
+      const { date, category, sortBy, search } = filters;
       const { limit = 12, page = 1 } = pagination;
 
-      const whereConditions: any = {};
+      if (isNaN(limit) || isNaN(page) || limit <= 0 || page <= 0) {
+        throw new BadRequestException(
+          'Limit and page must be positive numbers',
+        );
+      }
+
+      const query = this.repo
+        .createQueryBuilder('event')
+        .leftJoinAndSelect('event.group', 'group')
+        .leftJoin('event.attendees', 'attendees')
+        .loadAllRelationIds(); // Use loadAllRelationIds for consistency
 
       if (date) {
         const today = new Date();
         let startTimestamp: number;
         let endTimestamp: number;
 
-        switch (date) {
+        switch (date.toLowerCase()) {
           case 'today':
             startTimestamp = today.setHours(0, 0, 0, 0);
             endTimestamp = today.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'tomorrow':
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             startTimestamp = tomorrow.setHours(0, 0, 0, 0);
             endTimestamp = tomorrow.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'thisweek':
             const startOfWeek = new Date();
@@ -82,7 +95,6 @@ export class EventsService {
             const endOfWeek = new Date(startOfWeek);
             endOfWeek.setDate(startOfWeek.getDate() + 6);
             endTimestamp = endOfWeek.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'nextweek':
             const nextWeek = new Date();
@@ -95,7 +107,6 @@ export class EventsService {
             const endOfNextWeek = new Date(startOfNextWeek);
             endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
             endTimestamp = endOfNextWeek.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'thismonth':
             const startOfMonth = new Date();
@@ -105,7 +116,6 @@ export class EventsService {
             endOfMonth.setMonth(endOfMonth.getMonth() + 1);
             endOfMonth.setDate(0);
             endTimestamp = endOfMonth.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           case 'nextmonth':
             const nextMonth = new Date();
@@ -117,64 +127,80 @@ export class EventsService {
             endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
             endOfNextMonth.setDate(0);
             endTimestamp = endOfNextMonth.setHours(23, 59, 59, 999);
-            whereConditions.date = { $gte: startTimestamp, $lte: endTimestamp };
             break;
           default:
-            break;
+            throw new BadRequestException(`Invalid date filter: ${date}`);
         }
+        query.andWhere('event.date BETWEEN :startDate AND :endDate', {
+          startDate: startTimestamp / 1000, // Convert to seconds for PostgreSQL
+          endDate: endTimestamp / 1000,
+        });
       }
 
       if (category) {
-        whereConditions.category = category;
+        query.andWhere('event.category = :category', { category });
       }
 
-      let order: any = { date: 'ASC' };
-      switch (sortBy) {
+      if (search) {
+        const searchTerm = `%${search}%`;
+        query.andWhere(
+          `(
+            event.title ILIKE :searchTerm OR
+            event.description ILIKE :searchTerm OR
+            event.category ILIKE :searchTerm OR
+            :searchTerm ILIKE ANY (event.tags)
+          )`,
+          { searchTerm },
+        );
+      }
+
+      let order: any = { 'event.date': 'ASC' };
+      switch (sortBy?.toLowerCase()) {
         case 'latest':
-          order = { createdAt: 'DESC' };
+          order = { 'event.createdAt': 'DESC' };
           break;
         case 'popular':
-          order = { going: 'DESC' };
+          order = { 'event.going': 'DESC', 'event.date': 'ASC' };
           break;
         case 'free':
-          whereConditions.free = true;
-          order = { date: 'ASC' };
+          query.andWhere('event.free = :free', { free: true });
+          order = { 'event.date': 'ASC' };
           break;
         case 'date':
-          order = { date: 'ASC' };
+          order = { 'event.date': 'ASC' };
           break;
         default:
-          order = { date: 'ASC' };
+          order = { 'event.date': 'ASC' };
           break;
       }
 
       const skip = (page - 1) * limit;
 
+      query.skip(skip).take(limit);
+
       console.log('Query conditions:', {
-        where: whereConditions,
-        order,
+        where: query.expressionMap.wheres,
+        order: query.expressionMap.orderBys,
         skip,
         take: limit,
       });
 
-      const events = await this.repo.find({
-        where: whereConditions,
-        order,
-        skip,
-        take: limit,
-        relations: ['group', 'attendees'],
-      });
+      const events = await query.getMany();
 
       return events.map((event) => ({
         ...event,
         date: event.date, // Already a timestamp
-        attendees: event.attendees.map((attendee) => attendee.id),
+        attendees: event.attendees
+          ? event.attendees.map((attendee) => attendee.id)
+          : [],
       }));
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error('Error in findAllEvents:', error);
-      throw new Error(`Failed to fetch events: ${errorMessage}`);
+      throw new InternalServerErrorException(
+        `Failed to fetch events: ${errorMessage}`,
+      );
     }
   }
 

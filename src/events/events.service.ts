@@ -187,13 +187,21 @@ export class EventsService {
 
       const events = await query.getMany();
 
-      return events.map((event) => ({
-        ...event,
-        date: new Date(event.date).toISOString(),
-        attendees: event.attendees
-          ? event.attendees.map((attendee) => attendee.id)
-          : [],
-      }));
+      return events.map((event) => {
+
+        const dateNum = Number(event.date);
+        let isoDate = null;
+        if (!isNaN(dateNum)) {
+          isoDate = new Date(dateNum).toISOString();
+        }
+        return {
+          ...event,
+          date: isoDate,
+          attendees: event.attendees
+            ? event.attendees.map((attendee) => attendee.id)
+            : [],
+        };
+      });
     } catch (error) {
       console.error('Error in findAllEvents:', error);
       const errorMessage =

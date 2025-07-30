@@ -86,7 +86,7 @@ export class GroupsService {
         'grp.creationDate',
         'grp.category',
       ])
-      .addSelect('ARRAY_AGG(member.id)', 'members') 
+      .addSelect('ARRAY_AGG(member.id)', 'members')
       .where('grp.approved = :approved', { approved: true })
       .groupBy('grp.id');
 
@@ -95,15 +95,17 @@ export class GroupsService {
     }
 
     if (search && search.trim() !== '') {
-      const searchTerm = `%${search}%`;
+      const tsSearch = search.trim().replace(/'/g, "''"); 
+
       query.andWhere(
         `(
-        grp.name ILIKE :searchTerm
+        to_tsvector('english', grp.name) @@ plainto_tsquery('english', :tsSearch)
         OR EXISTS (
-          SELECT 1 FROM unnest(grp.description) elem WHERE elem ILIKE :searchTerm
+          SELECT 1 FROM unnest(grp.description) elem
+          WHERE to_tsvector('english', elem) @@ plainto_tsquery('english', :tsSearch)
         )
       )`,
-        { searchTerm },
+        { tsSearch },
       );
     }
 

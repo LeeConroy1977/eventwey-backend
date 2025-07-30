@@ -106,7 +106,7 @@ export class UsersService {
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
       .leftJoin('event.attendees', 'attendees')
-      .loadRelationIdAndMap('event.attendeeIds', 'event.attendees')
+      .loadRelationIdAndMap('event.attendees', 'event.attendees')
       .where('attendees.id = :userId', { userId });
 
     if (filters.category) {

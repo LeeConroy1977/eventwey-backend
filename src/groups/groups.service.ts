@@ -60,7 +60,7 @@ export class GroupsService {
     page?: number;
     category?: string;
     sortBy?: string;
-    search?: string; // Added search parameter
+    search?: string;
   }): Promise<Group[]> {
     let { limit, page, category, sortBy, search } = pagination;
 
@@ -74,22 +74,22 @@ export class GroupsService {
     const skip = (page - 1) * limit;
 
     const query = this.groupRepository
-      .createQueryBuilder('group')
-      .where('group.approved = :approved', { approved: true })
+      .createQueryBuilder('grp')
+      .where('grp.approved = :approved', { approved: true })
       .loadAllRelationIds();
 
     if (category) {
-      query.andWhere('group.category = :category', { category });
+      query.andWhere('grp.category = :category', { category });
     }
 
     if (search) {
       const searchTerm = `%${search}%`;
       query.andWhere(
         `(
-          group.name ILIKE :searchTerm
+          grp.name ILIKE :searchTerm
           ${
             'description' in this.groupRepository.metadata.columns
-              ? ' OR group.description ILIKE :searchTerm'
+              ? ' OR grp.description ILIKE :searchTerm'
               : ''
           }
         )`,
@@ -100,20 +100,18 @@ export class GroupsService {
     if (sortBy) {
       switch (sortBy.toLowerCase()) {
         case 'latest':
-          query.orderBy('group.createdAt', 'DESC');
+          query.orderBy('grp.createdAt', 'DESC');
           break;
         case 'popular':
-          query.orderBy('group.usersCount', 'DESC');
+          query.orderBy('grp.usersCount', 'DESC');
           break;
-        case 'alphabetical':
-          query.orderBy('group.name', 'ASC');
-          break;
+
         default:
-          query.orderBy('group.createdAt', 'ASC');
+          query.orderBy('grp.createdAt', 'ASC');
           break;
       }
     } else {
-      query.orderBy('group.createdAt', 'ASC');
+      query.orderBy('grp.createdAt', 'ASC');
     }
 
     query.skip(skip).take(limit);

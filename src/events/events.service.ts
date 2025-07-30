@@ -70,7 +70,7 @@ export class EventsService {
         .createQueryBuilder('event')
         .leftJoinAndSelect('event.group', 'group')
         .leftJoin('event.attendees', 'attendees')
-        .loadAllRelationIds(); // Use loadAllRelationIds for consistency
+        .loadAllRelationIds();
 
       if (date) {
         const today = new Date();

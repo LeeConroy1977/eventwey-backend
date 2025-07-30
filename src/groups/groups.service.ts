@@ -61,7 +61,7 @@ export class GroupsService {
     category?: string;
     sortBy?: string;
     search?: string;
-  }): Promise<Group[]> {
+  }): Promise<any[]> {
     let { limit, page, category, sortBy, search } = pagination;
 
     limit = limit || 15;
@@ -75,7 +75,19 @@ export class GroupsService {
 
     const query = this.groupRepository
       .createQueryBuilder('grp')
-      .where('grp.approved = :approved', { approved: true });
+      .leftJoin('grp.members', 'member')
+      .select([
+        'grp.id',
+        'grp.name',
+        'grp.groupAdmin',
+        'grp.description',
+        'grp.visibility',
+        'grp.location',
+        'grp.creationDate',
+      ])
+      .addSelect('ARRAY_AGG(member.userId)', 'members')
+      .where('grp.approved = :approved', { approved: true })
+      .groupBy('grp.id');
 
     if (category) {
       query.andWhere('grp.category = :category', { category });
@@ -85,10 +97,9 @@ export class GroupsService {
       const searchTerm = `%${search}%`;
       query.andWhere(
         `(
-        grp.name ILIKE :searchTerm 
+        grp.name ILIKE :searchTerm
         OR EXISTS (
-          SELECT 1 FROM jsonb_array_elements_text(grp.description) elem 
-          WHERE elem ILIKE :searchTerm
+          SELECT 1 FROM unnest(grp.description) elem WHERE elem ILIKE :searchTerm
         )
       )`,
         { searchTerm },
@@ -116,16 +127,13 @@ export class GroupsService {
 
     query.skip(skip).take(limit);
 
-    console.log('Query conditions:', {
-      where: query.expressionMap.wheres,
-      order: query.expressionMap.orderBys,
-      skip,
-      take: limit,
-    });
+    const raw = await query.getRawMany();
 
-    return await query.getMany();
+    return raw.map((row) => ({
+      ...row,
+      members: row.members ? row.members.filter((id) => id !== null) : [],
+    }));
   }
-
   async findGroupById(id: number): Promise<GroupDto> {
     const group = await this.groupRepository.findOne({
       where: { id },

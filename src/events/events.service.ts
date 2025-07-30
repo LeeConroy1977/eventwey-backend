@@ -58,8 +58,10 @@ export class EventsService {
   ): Promise<any[]> {
     try {
       const { date, category, sortBy, search } = filters;
-      const { limit = 12, page = 1 } = pagination;
+      let { limit = 12, page = 1 } = pagination;
 
+      limit = Number(limit);
+      page = Number(page);
       if (isNaN(limit) || isNaN(page) || limit <= 0 || page <= 0) {
         throw new BadRequestException(
           'Limit and page must be positive numbers',
@@ -69,71 +71,79 @@ export class EventsService {
       const query = this.repo
         .createQueryBuilder('event')
         .leftJoinAndSelect('event.group', 'group')
-        .leftJoin('event.attendees', 'attendees')
-        .loadAllRelationIds();
+        .leftJoinAndSelect('event.attendees', 'attendees');
 
       if (date) {
-        const today = new Date();
+        const now = new Date();
         let startTimestamp: number;
         let endTimestamp: number;
 
         switch (date.toLowerCase()) {
-          case 'today':
-            startTimestamp = today.setHours(0, 0, 0, 0);
-            endTimestamp = today.setHours(23, 59, 59, 999);
+          case 'today': {
+            const start = new Date(now);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(now);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
-          case 'tomorrow':
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            startTimestamp = tomorrow.setHours(0, 0, 0, 0);
-            endTimestamp = tomorrow.setHours(23, 59, 59, 999);
+          }
+          case 'tomorrow': {
+            const start = new Date(now);
+            start.setDate(start.getDate() + 1);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
-          case 'thisweek':
-            const startOfWeek = new Date();
-            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-            startTimestamp = startOfWeek.setHours(0, 0, 0, 0);
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endTimestamp = endOfWeek.setHours(23, 59, 59, 999);
+          }
+          case 'thisweek': {
+            const start = new Date(now);
+            const day = start.getDay();
+            start.setDate(start.getDate() - day);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
-          case 'nextweek':
-            const nextWeek = new Date();
-            nextWeek.setDate(nextWeek.getDate() + 7);
-            const startOfNextWeek = new Date(nextWeek);
-            startOfNextWeek.setDate(
-              startOfNextWeek.getDate() - startOfNextWeek.getDay(),
-            );
-            startTimestamp = startOfNextWeek.setHours(0, 0, 0, 0);
-            const endOfNextWeek = new Date(startOfNextWeek);
-            endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
-            endTimestamp = endOfNextWeek.setHours(23, 59, 59, 999);
+          }
+          case 'nextweek': {
+            const start = new Date(now);
+            start.setDate(start.getDate() + 7 - start.getDay());
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
-          case 'thismonth':
-            const startOfMonth = new Date();
-            startOfMonth.setDate(1);
-            startTimestamp = startOfMonth.setHours(0, 0, 0, 0);
-            const endOfMonth = new Date(startOfMonth);
-            endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-            endOfMonth.setDate(0);
-            endTimestamp = endOfMonth.setHours(23, 59, 59, 999);
+          }
+          case 'thismonth': {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
-          case 'nextmonth':
-            const nextMonth = new Date();
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-            const startOfNextMonth = new Date(nextMonth);
-            startOfNextMonth.setDate(1);
-            startTimestamp = startOfNextMonth.setHours(0, 0, 0, 0);
-            const endOfNextMonth = new Date(startOfNextMonth);
-            endOfNextMonth.setMonth(endOfNextMonth.getMonth() + 1);
-            endOfNextMonth.setDate(0);
-            endTimestamp = endOfNextMonth.setHours(23, 59, 59, 999);
+          }
+          case 'nextmonth': {
+            const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+            end.setHours(23, 59, 59, 999);
+            startTimestamp = start.getTime();
+            endTimestamp = end.getTime();
             break;
+          }
           default:
             throw new BadRequestException(`Invalid date filter: ${date}`);
         }
+
         query.andWhere('event.date BETWEEN :startDate AND :endDate', {
-          startDate: startTimestamp / 1000, // Convert to seconds for PostgreSQL
-          endDate: endTimestamp / 1000,
+          startDate: startTimestamp,
+          endDate: endTimestamp,
         });
       }
 
@@ -141,65 +151,53 @@ export class EventsService {
         query.andWhere('event.category = :category', { category });
       }
 
-      if (search) {
-        const searchTerm = `%${search}%`;
+      if (search && search.trim() !== '') {
+        const searchTerm = `%${search.trim()}%`;
         query.andWhere(
           `(
-            event.title ILIKE :searchTerm OR
-            event.description ILIKE :searchTerm OR
-            event.category ILIKE :searchTerm 
-          
-          )`,
+          event.title ILIKE :searchTerm OR
+          EXISTS (
+            SELECT 1 FROM unnest(event.description) elem WHERE elem ILIKE :searchTerm
+          ) OR
+          event.category ILIKE :searchTerm
+        )`,
           { searchTerm },
         );
       }
 
-      let order: any = { 'event.date': 'ASC' };
       switch (sortBy?.toLowerCase()) {
         case 'latest':
-          order = { 'event.createdAt': 'DESC' };
+          query.orderBy('event.createdAt', 'DESC');
           break;
         case 'popular':
-          order = { 'event.going': 'DESC', 'event.date': 'ASC' };
+          query.orderBy('event.going', 'DESC').addOrderBy('event.date', 'ASC');
           break;
         case 'free':
           query.andWhere('event.free = :free', { free: true });
-          order = { 'event.date': 'ASC' };
+          query.orderBy('event.date', 'ASC');
           break;
         case 'date':
-          order = { 'event.date': 'ASC' };
-          break;
         default:
-          order = { 'event.date': 'ASC' };
+          query.orderBy('event.date', 'ASC');
           break;
       }
 
       const skip = (page - 1) * limit;
-
       query.skip(skip).take(limit);
-
-      console.log('Query conditions:', {
-        where: query.expressionMap.wheres,
-        order: query.expressionMap.orderBys,
-        skip,
-        take: limit,
-      });
 
       const events = await query.getMany();
 
       return events.map((event) => ({
         ...event,
-        date: event.date, // Already a timestamp
+        date: new Date(event.date).toISOString(),
         attendees: event.attendees
           ? event.attendees.map((attendee) => attendee.id)
           : [],
       }));
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
       console.error('Error in findAllEvents:', error);
       throw new InternalServerErrorException(
-        `Failed to fetch events: ${errorMessage}`,
+        `Failed to fetch events: ${error.message || error}`,
       );
     }
   }

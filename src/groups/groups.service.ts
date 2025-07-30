@@ -96,18 +96,16 @@ export class GroupsService {
       );
     }
 
-
     if (sortBy) {
       switch (sortBy.toLowerCase()) {
         case 'latest':
           query.orderBy('grp.createdAt', 'DESC');
           break;
         case 'popular':
-          query
-            .leftJoin('grp.members', 'member')
-            .addSelect('COUNT(member.id)', 'memberCount')
-            .groupBy('grp.id')
-            .orderBy('memberCount', 'DESC');
+          query.orderBy(
+            `(SELECT COUNT(*) FROM members member WHERE member.groupId = grp.id)`,
+            'DESC',
+          );
           break;
         default:
           query.orderBy('grp.createdAt', 'ASC');

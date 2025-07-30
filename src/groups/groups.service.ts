@@ -140,11 +140,13 @@ export class GroupsService {
     if (!group) {
       throw new NotFoundException(`Group with ID ${groupId} not found`);
     }
+
     const events = await this.eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
+      .leftJoin('event.attendees', 'attendees')
+      .loadRelationIdAndMap('event.attendeeIds', 'event.attendees')
       .where('group.id = :groupId', { groupId })
-      .loadAllRelationIds()
       .getMany();
 
     return events;

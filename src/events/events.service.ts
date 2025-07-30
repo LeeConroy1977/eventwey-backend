@@ -148,7 +148,7 @@ export class EventsService {
             event.title ILIKE :searchTerm OR
             event.description ILIKE :searchTerm OR
             event.category ILIKE :searchTerm OR
-            :searchTerm ILIKE ANY (event.tags)
+            ANY (event.tags) ILIKE :searchTerm
           )`,
           { searchTerm },
         );

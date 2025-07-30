@@ -161,7 +161,7 @@ export class EventsController {
       );
     }
 
-    const amountInCents = parsePriceToCents(priceBand.price); // e.g., "£10" -> 1000
+    const amountInCents = parsePriceToCents(priceBand.price);
     console.log('Creating payment intent with amount (cents):', amountInCents);
 
     const paymentIntent = await this.stripeService.createPaymentIntent(

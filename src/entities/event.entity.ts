@@ -7,6 +7,7 @@ import {
   JoinTable,
   OneToMany,
   JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { Group } from './group.entity';
 import { User } from './user.entity';
@@ -90,4 +91,8 @@ export class AppEvent {
   @Column({ default: false })
   @Expose()
   approved: boolean;
+
+  @CreateDateColumn()
+  @Expose()
+  createdAt: Date;
 }

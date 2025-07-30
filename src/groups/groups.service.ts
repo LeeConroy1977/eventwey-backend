@@ -81,16 +81,15 @@ export class GroupsService {
       query.andWhere('grp.category = :category', { category });
     }
 
-    const hasDescription = this.groupRepository.metadata.columns.some(
-      (col) => col.propertyName === 'description',
-    );
-
     if (search) {
       const searchTerm = `%${search}%`;
       query.andWhere(
         `(
-        grp.name ILIKE :searchTerm
-        ${hasDescription ? ' OR grp.description ILIKE :searchTerm' : ''}
+        grp.name ILIKE :searchTerm 
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(grp.description) elem 
+          WHERE elem ILIKE :searchTerm
+        )
       )`,
         { searchTerm },
       );

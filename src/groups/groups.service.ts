@@ -100,10 +100,10 @@ export class GroupsService {
     if (sortBy) {
       switch (sortBy.toLowerCase()) {
         case 'latest':
-          query.orderBy('grp.createdAt', 'DESC');
+          query.orderBy('grp.creationDate', 'DESC');
           break;
         case 'popular':
-          query.orderBy('grp.usersCount', 'DESC');
+          query.orderBy('grp.members.length', 'DESC');
           break;
 
         default:

@@ -79,13 +79,14 @@ export class GroupsService {
       .select([
         'grp.id',
         'grp.name',
-        'grp.groupAdmin',
+        'grp.image',
         'grp.description',
-        'grp.visibility',
+        'grp.openAccess',
         'grp.location',
         'grp.creationDate',
+        'grp.category',
       ])
-      .addSelect('ARRAY_AGG(member.userId)', 'members')
+      .addSelect('ARRAY_AGG(member.id)', 'members') 
       .where('grp.approved = :approved', { approved: true })
       .groupBy('grp.id');
 
@@ -93,7 +94,7 @@ export class GroupsService {
       query.andWhere('grp.category = :category', { category });
     }
 
-    if (search) {
+    if (search && search.trim() !== '') {
       const searchTerm = `%${search}%`;
       query.andWhere(
         `(
@@ -113,7 +114,7 @@ export class GroupsService {
           break;
         case 'popular':
           query.orderBy(
-            `(SELECT COUNT(*) FROM members member WHERE member.groupId = grp.id)`,
+            `(SELECT COUNT(*) FROM group_members_member gm WHERE gm."groupId" = grp.id)`,
             'DESC',
           );
           break;
@@ -130,10 +131,18 @@ export class GroupsService {
     const raw = await query.getRawMany();
 
     return raw.map((row) => ({
-      ...row,
+      id: row.grp_id,
+      name: row.grp_name,
+      image: row.grp_image,
+      description: row.grp_description,
+      openAccess: row.grp_openAccess,
+      location: row.grp_location,
+      creationDate: row.grp_creationDate,
+      category: row.grp_category,
       members: row.members ? row.members.filter((id) => id !== null) : [],
     }));
   }
+
   async findGroupById(id: number): Promise<GroupDto> {
     const group = await this.groupRepository.findOne({
       where: { id },

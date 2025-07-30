@@ -196,8 +196,10 @@ export class EventsService {
       }));
     } catch (error) {
       console.error('Error in findAllEvents:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new InternalServerErrorException(
-        `Failed to fetch events: ${error.message || error}`,
+        `Failed to fetch events: ${errorMessage}`,
       );
     }
   }

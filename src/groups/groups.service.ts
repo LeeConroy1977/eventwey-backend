@@ -75,37 +75,40 @@ export class GroupsService {
 
     const query = this.groupRepository
       .createQueryBuilder('grp')
-      .where('grp.approved = :approved', { approved: true })
-      .loadAllRelationIds();
+      .where('grp.approved = :approved', { approved: true });
 
     if (category) {
       query.andWhere('grp.category = :category', { category });
     }
 
+    const hasDescription = this.groupRepository.metadata.columns.some(
+      (col) => col.propertyName === 'description',
+    );
+
     if (search) {
       const searchTerm = `%${search}%`;
       query.andWhere(
         `(
-          grp.name ILIKE :searchTerm
-          ${
-            'description' in this.groupRepository.metadata.columns
-              ? ' OR grp.description ILIKE :searchTerm'
-              : ''
-          }
-        )`,
+        grp.name ILIKE :searchTerm
+        ${hasDescription ? ' OR grp.description ILIKE :searchTerm' : ''}
+      )`,
         { searchTerm },
       );
     }
 
+
     if (sortBy) {
       switch (sortBy.toLowerCase()) {
         case 'latest':
-          query.orderBy('grp.creationDate', 'DESC');
+          query.orderBy('grp.createdAt', 'DESC');
           break;
         case 'popular':
-          query.orderBy('grp.members.length', 'DESC');
+          query
+            .leftJoin('grp.members', 'member')
+            .addSelect('COUNT(member.id)', 'memberCount')
+            .groupBy('grp.id')
+            .orderBy('memberCount', 'DESC');
           break;
-
         default:
           query.orderBy('grp.createdAt', 'ASC');
           break;

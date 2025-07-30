@@ -99,7 +99,7 @@ export class GroupsService {
     if (sortBy) {
       switch (sortBy.toLowerCase()) {
         case 'latest':
-          query.orderBy('grp.createdAt', 'DESC');
+          query.orderBy('grp.creationDate', 'DESC');
           break;
         case 'popular':
           query.orderBy(
@@ -108,11 +108,11 @@ export class GroupsService {
           );
           break;
         default:
-          query.orderBy('grp.createdAt', 'ASC');
+          query.orderBy('grp.creationDate', 'ASC');
           break;
       }
     } else {
-      query.orderBy('grp.createdAt', 'ASC');
+      query.orderBy('grp.creationDate', 'ASC');
     }
 
     query.skip(skip).take(limit);

@@ -195,7 +195,7 @@ export class EventsService {
         }
         return {
           ...event,
-          date: isoDate,
+
           attendees: event.attendees
             ? event.attendees.map((attendee) => attendee.id)
             : [],

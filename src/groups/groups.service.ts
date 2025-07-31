@@ -95,7 +95,7 @@ export class GroupsService {
     }
 
     if (search && search.trim() !== '') {
-      const tsSearch = search.trim().replace(/'/g, "''"); 
+      const tsSearch = search.trim().replace(/'/g, "''");
 
       query.andWhere(
         `(
@@ -191,7 +191,7 @@ export class GroupsService {
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.group', 'group')
       .leftJoin('event.attendees', 'attendees')
-      .loadRelationIdAndMap('event.attendeeIds', 'event.attendees')
+      .loadRelationIdAndMap('event.attendees', 'event.attendees')
       .where('group.id = :groupId', { groupId })
       .getMany();
 

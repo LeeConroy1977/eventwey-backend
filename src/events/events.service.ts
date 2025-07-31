@@ -78,7 +78,9 @@ export class EventsService {
         let startTimestamp: number;
         let endTimestamp: number;
 
-        switch (date.toLowerCase()) {
+        const normalizedDate = date.toLowerCase().replace(/\s+/g, '');
+
+        switch (normalizedDate) {
           case 'today': {
             const start = new Date(now);
             start.setHours(0, 0, 0, 0);
@@ -142,8 +144,8 @@ export class EventsService {
         }
 
         query.andWhere('event.date BETWEEN :startDate AND :endDate', {
-          startDate: startTimestamp,
-          endDate: endTimestamp,
+          startDate: Math.floor(startTimestamp / 1000),
+          endDate: Math.floor(endTimestamp / 1000),
         });
       }
 

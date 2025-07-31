@@ -170,11 +170,11 @@ export class EventsService {
           query.orderBy('event.createdAt', 'DESC');
           break;
         case 'popular':
-          query.orderBy('event.going', 'DESC').addOrderBy('event.date', 'ASC');
+          query.orderBy('event.going', 'DESC');
           break;
         case 'free':
           query.andWhere('event.free = :free', { free: true });
-          query.orderBy('event.date', 'ASC');
+
           break;
         case 'date':
         default:
@@ -188,7 +188,6 @@ export class EventsService {
       const events = await query.getMany();
 
       return events.map((event) => {
-
         const dateNum = Number(event.date);
         let isoDate = null;
         if (!isNaN(dateNum)) {

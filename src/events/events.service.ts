@@ -80,67 +80,82 @@ export class EventsService {
 
         const normalizedDate = date.toLowerCase().replace(/\s+/g, '');
 
-        switch (normalizedDate) {
-          case 'today': {
-            const start = new Date(now);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(now);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          case 'tomorrow': {
-            const start = new Date(now);
-            start.setDate(start.getDate() + 1);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(start);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          case 'thisweek': {
-            const start = new Date(now);
-            const day = start.getDay();
-            start.setDate(start.getDate() - day);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          case 'nextweek': {
-            const start = new Date(now);
-            start.setDate(start.getDate() + 7 - start.getDay());
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          case 'thismonth': {
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          case 'nextmonth': {
-            const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-            end.setHours(23, 59, 59, 999);
-            startTimestamp = start.getTime();
-            endTimestamp = end.getTime();
-            break;
-          }
-          default:
+        const isSpecificDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+        if (isSpecificDate) {
+          const parsedDate = new Date(date);
+          if (isNaN(parsedDate.getTime())) {
             throw new BadRequestException(`Invalid date filter: ${date}`);
+          }
+
+          const start = new Date(parsedDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(parsedDate);
+          end.setHours(23, 59, 59, 999);
+          startTimestamp = start.getTime();
+          endTimestamp = end.getTime();
+        } else {
+          switch (normalizedDate) {
+            case 'today': {
+              const start = new Date(now);
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(now);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            case 'tomorrow': {
+              const start = new Date(now);
+              start.setDate(start.getDate() + 1);
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(start);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            case 'thisweek': {
+              const start = new Date(now);
+              const day = start.getDay();
+              start.setDate(start.getDate() - day);
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(start);
+              end.setDate(start.getDate() + 6);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            case 'nextweek': {
+              const start = new Date(now);
+              start.setDate(start.getDate() + 7 - start.getDay());
+              start.setHours(0, 0, 0, 0);
+              const end = new Date(start);
+              end.setDate(start.getDate() + 6);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            case 'thismonth': {
+              const start = new Date(now.getFullYear(), now.getMonth(), 1);
+              const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            case 'nextmonth': {
+              const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+              const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+              end.setHours(23, 59, 59, 999);
+              startTimestamp = start.getTime();
+              endTimestamp = end.getTime();
+              break;
+            }
+            default:
+              throw new BadRequestException(`Invalid date filter: ${date}`);
+          }
         }
 
         query.andWhere('event.date BETWEEN :startDate AND :endDate', {

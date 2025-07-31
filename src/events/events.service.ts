@@ -170,15 +170,15 @@ export class EventsService {
           query.orderBy('event.createdAt', 'DESC');
           break;
         case 'popular':
-          query.orderBy('event.going', 'DESC');
+          query.orderBy('event.going', 'DESC').addOrderBy('event.date', 'ASC');
           break;
         case 'free':
           query.andWhere('event.free = :free', { free: true });
-
+          query.orderBy('event.date', 'ASC');
           break;
         case 'date':
-        default:
           query.orderBy('event.date', 'ASC');
+        default:
           break;
       }
 

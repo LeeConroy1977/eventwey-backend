@@ -188,14 +188,13 @@ export class EventsService {
       const events = await query.getMany();
 
       return events.map((event) => {
-        const dateNum = Number(event.date);
-        let isoDate = null;
-        if (!isNaN(dateNum)) {
-          isoDate = new Date(dateNum).toISOString();
+        let dateStr: string | null = null;
+        if (!isNaN(event.date)) {
+          dateStr = event.date.toString();
         }
         return {
           ...event,
-
+          date: dateStr,
           attendees: event.attendees
             ? event.attendees.map((attendee) => attendee.id)
             : [],

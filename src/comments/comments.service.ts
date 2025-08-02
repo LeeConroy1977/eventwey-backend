@@ -75,7 +75,7 @@ export class CommentsService {
     parentCommentId: number,
     userId: number,
     body: ReplyToCommentDto,
-  ) {
+  ): Promise<Comment> {
     const user = await this.usersService.findUserById(userId);
 
     if (!user) throw new NotFoundException('User not found');
@@ -93,14 +93,11 @@ export class CommentsService {
 
     const reply = this.commentRepository.create({
       content: body.content,
-      user: this.formatUser(user),
-      parentComment: {
-        id: parentComment.id,
-        content: parentComment.content,
-        user: this.formatUser(parentComment.user),
-      },
+      user,
+      parentComment,
       groupId: parentComment.groupId,
       eventId: parentComment.eventId,
+      likeCount: 0,
     });
 
     const savedReply = await this.commentRepository.save(reply);
@@ -115,37 +112,17 @@ export class CommentsService {
       );
     }
 
-    const formattedReply = await this.commentRepository.findOne({
-      where: { id: savedReply.id },
-      relations: ['user', 'parentComment', 'parentComment.user'],
-    });
 
-    return {
-      id: formattedReply.id,
-      content: formattedReply.content,
-      groupId: formattedReply.groupId,
-      eventId: formattedReply.eventId,
-      likeCount: formattedReply.likeCount,
-      createdAt: formattedReply.createdAt,
-      parentComment: formattedReply.parentComment
-        ? {
-            id: formattedReply.parentComment.id,
-            content: formattedReply.parentComment.content,
-            user: formattedReply.parentComment.user
-              ? {
-                  id: formattedReply.parentComment.user.id,
-                  username: formattedReply.parentComment.user.username,
-                  profileImage: formattedReply.parentComment.user.profileImage,
-                }
-              : null,
-          }
-        : null,
-      user: {
-        id: formattedReply.user.id,
-        username: formattedReply.user.username,
-        profileImage: formattedReply.user.profileImage,
-      },
-    };
+    return await this.commentRepository.findOne({
+      where: { id: savedReply.id },
+      relations: [
+        'user',
+        'parentComment',
+        'parentComment.user',
+        'replies',
+        'likes',
+      ], // Include all relations
+    });
   }
   async getCommentsForEvent(
     eventId: number,

@@ -47,6 +47,8 @@ export class CommentsService {
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.replies', 'replies')
       .leftJoinAndSelect('replies.user', 'user')
+      .leftJoinAndSelect('comment.parentComment', 'parentComment')
+      .leftJoinAndSelect('parentComment.user', 'parentUser')
       .where('comment.id = :commentId', { commentId })
       .getOne();
 
@@ -83,10 +85,11 @@ export class CommentsService {
       relations: ['user'],
     });
 
-    if (!parentComment)
+    if (!parentComment) {
       throw new NotFoundException(
         `Parent comment with the Id ${parentCommentId} not found`,
       );
+    }
 
     const reply = this.commentRepository.create({
       content: body.content,
@@ -112,9 +115,38 @@ export class CommentsService {
       );
     }
 
-    return savedReply;
-  }
+    const formattedReply = await this.commentRepository.findOne({
+      where: { id: savedReply.id },
+      relations: ['user', 'parentComment', 'parentComment.user'],
+    });
 
+    return {
+      id: formattedReply.id,
+      content: formattedReply.content,
+      groupId: formattedReply.groupId,
+      eventId: formattedReply.eventId,
+      likeCount: formattedReply.likeCount,
+      createdAt: formattedReply.createdAt,
+      parentComment: formattedReply.parentComment
+        ? {
+            id: formattedReply.parentComment.id,
+            content: formattedReply.parentComment.content,
+            user: formattedReply.parentComment.user
+              ? {
+                  id: formattedReply.parentComment.user.id,
+                  username: formattedReply.parentComment.user.username,
+                  profileImage: formattedReply.parentComment.user.profileImage,
+                }
+              : null,
+          }
+        : null,
+      user: {
+        id: formattedReply.user.id,
+        username: formattedReply.user.username,
+        profileImage: formattedReply.user.profileImage,
+      },
+    };
+  }
   async getCommentsForEvent(
     eventId: number,
     page: number = 1,
@@ -128,7 +160,7 @@ export class CommentsService {
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
-      relations: ['user'],
+      relations: ['user', 'parentComment', 'parentComment.user'],
     });
     const formattedComments = comments.map((comment) => ({
       id: comment.id,
@@ -167,7 +199,7 @@ export class CommentsService {
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
-      relations: ['user'],
+      relations: ['user', 'parentComment', 'parentComment.user'],
     });
     const formattedComments = comments.map((comment) => ({
       id: comment.id,

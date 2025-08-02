@@ -59,6 +59,7 @@ export class CommentsService {
       eventId: comment.eventId,
       likeCount: comment.likeCount,
       createdAt: comment.createdAt,
+      parentComment: comment.parentComment,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -136,6 +137,7 @@ export class CommentsService {
       eventId: comment.eventId,
       likeCount: comment.likeCount,
       createdAt: comment.createdAt,
+      parentComment: comment.parentComment,
       user: {
         id: comment.user.id,
         username: comment.user.username,
@@ -174,6 +176,7 @@ export class CommentsService {
       eventId: comment.eventId,
       likeCount: comment.likeCount,
       createdAt: comment.createdAt,
+      parentComment: comment.parentComment,
       user: {
         id: comment.user.id,
         username: comment.user.username,

@@ -17,27 +17,27 @@ export class Comment {
   @Column()
   content: string;
 
-  @Column({ type: 'int', nullable: true })
-  groupId: number | null;
+  @Column({ nullable: true })
+  eventId?: number;
 
-  @Column({ type: 'int', nullable: true })
-  eventId: number | null;
-
-  @ManyToOne(() => User, (user) => user.comments, { eager: true })
-  user: User;
-
-  @OneToMany(() => Comment, (comment) => comment.parentComment)
-  replies: Comment[];
-
-  @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true })
-  parentComment: Comment | null;
-
-  @OneToMany(() => Like, (like) => like.comment)
-  likes: Like[];
+  @Column({ nullable: true })
+  groupId?: number;
 
   @Column({ default: 0 })
   likeCount: number;
 
-  @CreateDateColumn()
+  @Column()
   createdAt: Date;
+
+  @ManyToOne(() => User)
+  user: User;
+
+  @ManyToOne(() => Comment, { nullable: true })
+  parentComment?: Comment;
+
+  @OneToMany(() => Comment, (comment) => comment.parentComment)
+  replies: Comment[];
+
+  @OneToMany(() => Like, (like) => like.comment)
+  likes: Like[];
 }

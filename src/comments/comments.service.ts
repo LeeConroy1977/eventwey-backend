@@ -13,10 +13,20 @@ import { UpdateCommentDto } from './dtos/update-comment-dto';
 import { ReplyToCommentDto } from './dtos/reply-to-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Like } from '../entities/like.entity';
-import { plainToClass } from 'class-transformer';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
+import {
+  CommentResponseDto,
+  UserResponseDto,
+  LikeResponseDto,
+} from './dtos/comment-response-dto';
 
+@WebSocketGateway({ cors: true })
 @Injectable()
 export class CommentsService {
+  @WebSocketServer()
+  private server: Server;
+
   constructor(
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
@@ -26,56 +36,50 @@ export class CommentsService {
     private readonly usersService: UsersService,
   ) {}
 
-  async createComment(userId: number, body: CreateCommentDto) {
+  async createComment(
+    userId: number,
+    body: CreateCommentDto,
+  ): Promise<CommentResponseDto> {
     const user = await this.usersService.findUserById(userId);
 
     if (!user) throw new NotFoundException('User not found');
 
     const comment = this.commentRepository.create({
-      user: this.formatUser(user),
+      user,
       content: body.content,
       groupId: body.groupId || null,
       eventId: body.eventId || null,
       likeCount: 0,
+      createdAt: new Date(),
+      likes: [],
+      replies: [],
     });
 
-    return await this.commentRepository.save(comment);
-  }
+    const savedComment = await this.commentRepository.save(comment);
 
-  async getReplies(commentId: number) {
-    const comment = await this.commentRepository
-      .createQueryBuilder('comment')
-      .leftJoinAndSelect('comment.replies', 'replies')
-      .leftJoinAndSelect('replies.user', 'user')
-      .leftJoinAndSelect('comment.parentComment', 'parentComment')
-      .leftJoinAndSelect('parentComment.user', 'parentUser')
-      .where('comment.id = :commentId', { commentId })
-      .getOne();
+    const formattedComment: CommentResponseDto = {
+      id: savedComment.id,
+      content: savedComment.content,
+      groupId: savedComment.groupId,
+      eventId: savedComment.eventId,
+      likeCount: savedComment.likeCount,
+      createdAt: savedComment.createdAt,
+      user: this.formatUser(user),
+      parentComment: null,
+      replies: [],
+      likes: [],
+    };
 
-    if (!comment)
-      throw new NotFoundException(`Comment with the Id ${commentId} not found`);
-    const formattedComments = comment.replies.map((comment) => ({
-      id: comment.id,
-      content: comment.content,
-      groupId: comment.groupId,
-      eventId: comment.eventId,
-      likeCount: comment.likeCount,
-      createdAt: comment.createdAt,
-      parentComment: comment.parentComment,
-      user: {
-        id: comment.user.id,
-        username: comment.user.username,
-        profileImage: comment.user.profileImage,
-      },
-    }));
-    return formattedComments;
+    this.server.emit('commentCreated', formattedComment);
+
+    return formattedComment;
   }
 
   async replyToComment(
     parentCommentId: number,
     userId: number,
     body: ReplyToCommentDto,
-  ): Promise<Comment> {
+  ): Promise<CommentResponseDto> {
     const user = await this.usersService.findUserById(userId);
 
     if (!user) throw new NotFoundException('User not found');
@@ -98,6 +102,9 @@ export class CommentsService {
       groupId: parentComment.groupId,
       eventId: parentComment.eventId,
       likeCount: 0,
+      createdAt: new Date(),
+      likes: [],
+      replies: [],
     });
 
     const savedReply = await this.commentRepository.save(reply);
@@ -112,8 +119,7 @@ export class CommentsService {
       );
     }
 
-
-    return await this.commentRepository.findOne({
+    const fullReply = await this.commentRepository.findOne({
       where: { id: savedReply.id },
       relations: [
         'user',
@@ -121,99 +127,49 @@ export class CommentsService {
         'parentComment.user',
         'replies',
         'likes',
-      ], // Include all relations
+        'likes.user',
+      ],
     });
-  }
-  async getCommentsForEvent(
-    eventId: number,
-    page: number = 1,
-    limit: number = 4,
-  ) {
-    if (page < 1 || limit < 1)
-      throw new BadRequestException('Invalid pagination parameters');
-    const skip = (page - 1) * limit;
-    const [comments, total] = await this.commentRepository.findAndCount({
-      where: { eventId },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-      relations: ['user', 'parentComment', 'parentComment.user'],
-    });
-    const formattedComments = comments.map((comment) => ({
-      id: comment.id,
-      content: comment.content,
-      groupId: comment.groupId,
-      eventId: comment.eventId,
-      likeCount: comment.likeCount,
-      createdAt: comment.createdAt,
-      parentComment: comment.parentComment,
-      user: {
-        id: comment.user.id,
-        username: comment.user.username,
-        profileImage: comment.user.profileImage,
-      },
-    }));
 
-    return {
-      comments: formattedComments,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-      hasMore: page * limit < total,
+    const formattedReply: CommentResponseDto = {
+      id: fullReply.id,
+      content: fullReply.content,
+      groupId: fullReply.groupId,
+      eventId: fullReply.eventId,
+      likeCount: fullReply.likeCount,
+      createdAt: fullReply.createdAt,
+      user: this.formatUser(fullReply.user),
+      parentComment: fullReply.parentComment
+        ? {
+            id: fullReply.parentComment.id,
+            content: fullReply.parentComment.content,
+            user: this.formatUser(fullReply.parentComment.user),
+          }
+        : null,
+      replies: fullReply.replies || [],
+      likes: fullReply.likes.map((like) => ({
+        id: like.id,
+        user: this.formatUser(like.user),
+      })),
     };
-  }
 
-  async getCommentsForGroup(
-    groupId: number,
-    page: number = 1,
-    limit: number = 4,
-  ) {
-    if (page < 1 || limit < 1)
-      throw new BadRequestException('Invalid pagination parameters');
-    const skip = (page - 1) * limit;
-    const [comments, total] = await this.commentRepository.findAndCount({
-      where: { groupId },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-      relations: ['user', 'parentComment', 'parentComment.user'],
-    });
-    const formattedComments = comments.map((comment) => ({
-      id: comment.id,
-      content: comment.content,
-      groupId: comment.groupId,
-      eventId: comment.eventId,
-      likeCount: comment.likeCount,
-      createdAt: comment.createdAt,
-      parentComment: comment.parentComment,
-      user: {
-        id: comment.user.id,
-        username: comment.user.username,
-        profileImage: comment.user.profileImage,
-      },
-    }));
+    this.server.emit('commentReplied', formattedReply);
 
-    return {
-      comments: formattedComments,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-      hasMore: page * limit < total,
-    };
+    return formattedReply;
   }
 
   async updateComment(
     commentId: number,
     userId: number,
     body: UpdateCommentDto,
-  ) {
+  ): Promise<CommentResponseDto> {
     const user = await this.usersService.findUserById(userId);
 
     if (!user) throw new NotFoundException('User not found');
 
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['user'],
+      relations: ['user', 'likes', 'likes.user'],
     });
 
     if (!comment)
@@ -224,17 +180,31 @@ export class CommentsService {
 
     Object.assign(comment, body);
 
-    await this.commentRepository.save(comment);
+    const updatedComment = await this.commentRepository.save(comment);
 
-    const formattedComment = {
-      id: comment.id,
-      content: comment.content,
-      groupId: comment.groupId,
-      eventId: comment.eventId,
-      likeCount: comment.likeCount,
-      createdAt: comment.createdAt,
+    const formattedComment: CommentResponseDto = {
+      id: updatedComment.id,
+      content: updatedComment.content,
+      groupId: updatedComment.groupId,
+      eventId: updatedComment.eventId,
+      likeCount: updatedComment.likeCount,
+      createdAt: updatedComment.createdAt,
       user: this.formatUser(user),
+      parentComment: updatedComment.parentComment
+        ? {
+            id: updatedComment.parentComment.id,
+            content: updatedComment.parentComment.content,
+            user: this.formatUser(updatedComment.parentComment.user),
+          }
+        : null,
+      replies: updatedComment.replies || [],
+      likes: updatedComment.likes.map((like) => ({
+        id: like.id,
+        user: this.formatUser(like.user),
+      })),
     };
+
+    this.server.emit('commentUpdated', formattedComment);
 
     return formattedComment;
   }
@@ -255,6 +225,8 @@ export class CommentsService {
 
     await this.commentRepository.delete(comment.id);
 
+    this.server.emit('commentDeleted', { id: commentId });
+
     return { message: `Comment with the Id ${commentId} has been deleted` };
   }
 
@@ -265,31 +237,24 @@ export class CommentsService {
 
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['likes', 'likes.user'],
+      relations: ['likes', 'likes.user', 'user'],
     });
 
     if (!comment)
       throw new NotFoundException(`Comment with the Id ${commentId} not found`);
-    console.log(
-      'Likes for this comment:',
-      comment.likes.map((like) => like.user.id),
-    );
 
     const existingLike = comment.likes.find((like) => like.user.id === user.id);
 
     if (existingLike)
       throw new BadRequestException('You have already liked this comment');
 
-    const like = {
-      user,
-      comment,
-    };
+    const like = { user, comment };
 
     await this.likeRepository.save(like);
 
     const updatedComment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['likes'],
+      relations: ['likes', 'likes.user'],
     });
 
     updatedComment.likeCount = updatedComment.likes.length;
@@ -304,6 +269,15 @@ export class CommentsService {
         comment.eventId ?? undefined,
       );
     }
+
+    this.server.emit('commentLiked', {
+      id: commentId,
+      likes: updatedComment.likes.map((like) => ({
+        id: like.id,
+        user: this.formatUser(like.user),
+      })),
+      likeCount: updatedComment.likeCount,
+    });
 
     return { message: 'Comment liked', likes: updatedComment.likeCount };
   }
@@ -324,26 +298,150 @@ export class CommentsService {
 
     if (!comment)
       throw new NotFoundException(`Comment with the Id ${commentId} not found`);
-    console.log('Likes:', comment.likes);
+
     const existingLike = comment.likes.find((like) => like.user.id === user.id);
 
     if (!existingLike)
       throw new NotFoundException('You have not liked this comment');
 
-    await this.likeRepository.delete({ user: user, comment: comment });
+    await this.likeRepository.delete({ user, comment });
 
     const updatedComment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['likes'],
+      relations: ['likes', 'likes.user'],
     });
 
     updatedComment.likeCount -= 1;
     await this.commentRepository.save(updatedComment);
 
-    return { message: 'comment unliked', likes: updatedComment.likeCount };
+    this.server.emit('commentUnliked', {
+      id: commentId,
+      likes: updatedComment.likes.map((like) => ({
+        id: like.id,
+        user: this.formatUser(like.user),
+      })),
+      likeCount: updatedComment.likeCount,
+    });
+
+    return { message: 'Comment unliked', likes: updatedComment.likeCount };
   }
 
-  private formatUser(user: any) {
+  async getCommentsForEvent(
+    eventId: number,
+    page: number = 1,
+    limit: number = 4,
+  ): Promise<{
+    comments: CommentResponseDto[];
+    total: number;
+    page: number;
+    totalPages: number;
+    hasMore: boolean;
+  }> {
+    if (page < 1 || limit < 1)
+      throw new BadRequestException('Invalid pagination parameters');
+
+    const [comments, total] = await this.commentRepository.findAndCount({
+      where: { eventId, parentComment: null },
+      relations: ['user', 'likes', 'likes.user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    const formattedComments = await Promise.all(
+      comments.map(
+        async (comment) => await this.formatCommentWithReplies(comment),
+      ),
+    );
+
+    return {
+      comments: formattedComments,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    };
+  }
+
+  async getCommentsForGroup(
+    groupId: number,
+    page: number = 1,
+    limit: number = 4,
+  ): Promise<{
+    comments: CommentResponseDto[];
+    total: number;
+    page: number;
+    totalPages: number;
+    hasMore: boolean;
+  }> {
+    if (page < 1 || limit < 1)
+      throw new BadRequestException('Invalid pagination parameters');
+
+    const [comments, total] = await this.commentRepository.findAndCount({
+      where: { groupId, parentComment: null },
+      relations: ['user', 'likes', 'likes.user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    const formattedComments = await Promise.all(
+      comments.map(
+        async (comment) => await this.formatCommentWithReplies(comment),
+      ),
+    );
+
+    return {
+      comments: formattedComments,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    };
+  }
+
+  private async formatCommentWithReplies(
+    comment: Comment,
+    depth: number = 0,
+  ): Promise<CommentResponseDto> {
+    if (depth > 10) return null; // Prevent infinite recursion
+
+    const replies = await this.commentRepository.find({
+      where: { parentComment: { id: comment.id } },
+      relations: ['user', 'likes', 'likes.user'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const formattedReplies = await Promise.all(
+      replies.map(
+        async (reply) => await this.formatCommentWithReplies(reply, depth + 1),
+      ),
+    );
+
+    return {
+      id: comment.id,
+      content: comment.content,
+      groupId: comment.groupId,
+      eventId: comment.eventId,
+      likeCount: comment.likeCount,
+      createdAt: comment.createdAt,
+      user: this.formatUser(comment.user),
+      parentComment: comment.parentComment
+        ? {
+            id: comment.parentComment.id,
+            content: comment.parentComment.content,
+            user: this.formatUser(comment.parentComment.user),
+          }
+        : null,
+      replies: formattedReplies.filter((reply) => reply !== null),
+      likes: comment.likes.map((like) => ({
+        id: like.id,
+        user: this.formatUser(like.user),
+      })),
+    };
+  }
+
+  private formatUser(user: any): UserResponseDto {
     return {
       id: user.id,
       username: user.username,

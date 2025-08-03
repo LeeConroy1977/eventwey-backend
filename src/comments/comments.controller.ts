@@ -24,7 +24,6 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('comments')
-
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 

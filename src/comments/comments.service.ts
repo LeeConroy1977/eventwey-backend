@@ -139,13 +139,11 @@ export class CommentsService {
       likeCount: fullReply.likeCount,
       createdAt: fullReply.createdAt,
       user: this.formatUser(fullReply.user),
-      parentComment: fullReply.parentComment
-        ? {
-            id: fullReply.parentComment.id,
-            content: fullReply.parentComment.content,
-            user: this.formatUser(fullReply.parentComment.user),
-          }
-        : null,
+      parentComment: {
+        id: fullReply.parentComment.id,
+        content: fullReply.parentComment.content,
+        user: this.formatUser(fullReply.parentComment.user),
+      },
       replies: fullReply.replies || [],
       likes: fullReply.likes.map((like) => ({
         id: like.id,
@@ -169,7 +167,13 @@ export class CommentsService {
 
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['user', 'likes', 'likes.user'],
+      relations: [
+        'user',
+        'likes',
+        'likes.user',
+        'parentComment',
+        'parentComment.user',
+      ],
     });
 
     if (!comment)
@@ -404,11 +408,17 @@ export class CommentsService {
     comment: Comment,
     depth: number = 0,
   ): Promise<CommentResponseDto> {
-    if (depth > 10) return null; // Prevent infinite recursion
+    if (depth > 10) return null;
 
     const replies = await this.commentRepository.find({
       where: { parentComment: { id: comment.id } },
-      relations: ['user', 'likes', 'likes.user'],
+      relations: [
+        'user',
+        'likes',
+        'likes.user',
+        'parentComment',
+        'parentComment.user',
+      ],
       order: { createdAt: 'ASC' },
     });
 

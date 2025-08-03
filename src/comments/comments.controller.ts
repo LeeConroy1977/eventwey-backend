@@ -37,6 +37,7 @@ export class CommentsController {
     return await this.commentsService.createComment(userId, body);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':commentId/reply')
   async replyToComment(
     @Param('commentId', ParseIntPipe) commentId: number,

@@ -37,9 +37,9 @@ export class CommentsController {
     return await this.commentsService.createComment(userId, body);
   }
 
-@Post(':commentId/repl')
+  @Post(':commentId/reply')
   async replyToComment(
-    @Param('commentId') commentId: number,
+    @Param('commentId', ParseIntPipe) commentId: number,
     @Req() req: AuthenticatedRequest,
     @Body() body: ReplyToCommentDto,
   ) {

@@ -21,7 +21,12 @@ import {
   LikeResponseDto,
 } from './dtos/comment-response-dto';
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: ['http://localhost:5173'],
+    credentials: true,
+  },
+})
 @Injectable()
 export class CommentsService {
   @WebSocketServer()

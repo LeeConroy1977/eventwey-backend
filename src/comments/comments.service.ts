@@ -346,7 +346,13 @@ export class CommentsService {
 
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { eventId, parentComment: null },
-      relations: ['user', 'likes', 'likes.user'],
+      relations: [
+        'user',
+        'likes',
+        'likes.user',
+        'parentComment',
+        'parentComment.user',
+      ],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -383,7 +389,13 @@ export class CommentsService {
 
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { groupId, parentComment: null },
-      relations: ['user', 'likes', 'likes.user'],
+      relations: [
+        'user',
+        'likes',
+        'likes.user',
+        'parentComment',
+        'parentComment.user',
+      ],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -408,7 +420,7 @@ export class CommentsService {
     comment: Comment,
     depth: number = 0,
   ): Promise<CommentResponseDto> {
-    if (depth > 10) return null;
+    if (depth > 10) return null; // Prevent infinite recursion
 
     const replies = await this.commentRepository.find({
       where: { parentComment: { id: comment.id } },

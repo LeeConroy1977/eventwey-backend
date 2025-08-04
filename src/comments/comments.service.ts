@@ -406,7 +406,7 @@ export class CommentsService {
           pc.content AS parent_content,
           pu.id AS parent_user_id,
           pu.username AS parent_username,
-          pu.profileImage AS parent_profile_image
+          pu."profileImage" AS parent_profile_image
         FROM "comment" c
         INNER JOIN CommentHierarchy ch ON c."parentCommentId" = ch.id
         JOIN "user" u ON c."userId" = u.id

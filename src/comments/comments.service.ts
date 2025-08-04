@@ -350,6 +350,7 @@ export class CommentsService {
       throw new BadRequestException('Invalid pagination parameters');
     }
 
+    // Get top-level comments first
     const [topLevelComments, total] = await this.commentRepository.findAndCount(
       {
         where: { eventId, parentComment: IsNull() },
@@ -362,26 +363,26 @@ export class CommentsService {
 
     const commentIds = topLevelComments.map((comment) => comment.id);
     let allComments: any[] = [];
+
     if (commentIds.length > 0) {
       const query = `
       WITH RECURSIVE CommentHierarchy AS (
-        -- Select top-level comments for the given IDs
         SELECT 
           c.id, 
           c.content, 
-          c."createdAt", 
-          c."eventId", 
-          c."groupId", 
-          c."parentCommentId", 
-          c."userId", 
-          c."likeCount",
+          c."createdAt" AS "createdAt", 
+          c."eventId" AS "eventId", 
+          c."groupId" AS "groupId", 
+          c."parentCommentId" AS "parentCommentId", 
+          c."userId" AS "userId", 
+          c."likeCount" AS "likeCount",
           u.username, 
           u."profileImage",
-          pc.id AS parent_id,
-          pc.content AS parent_content,
-          pu.id AS parent_user_id,
-          pu.username AS parent_username,
-          pu."profileImage" AS parent_profile_image
+          pc.id AS "parentId",
+          pc.content AS "parentContent",
+          pu.id AS "parentUserId",
+          pu.username AS "parentUsername",
+          pu."profileImage" AS "parentProfileImage"
         FROM "comment" c
         JOIN "user" u ON c."userId" = u.id
         LEFT JOIN "comment" pc ON c."parentCommentId" = pc.id
@@ -390,23 +391,22 @@ export class CommentsService {
 
         UNION ALL
 
-        -- Recursively fetch all replies (no limit)
         SELECT 
           c.id, 
           c.content, 
-          c."createdAt", 
-          c."eventId", 
-          c."groupId", 
-          c."parentCommentId", 
-          c."userId", 
-          c."likeCount",
+          c."createdAt" AS "createdAt", 
+          c."eventId" AS "eventId", 
+          c."groupId" AS "groupId", 
+          c."parentCommentId" AS "parentCommentId", 
+          c."userId" AS "userId", 
+          c."likeCount" AS "likeCount",
           u.username, 
           u."profileImage",
-          pc.id AS parent_id,
-          pc.content AS parent_content,
-          pu.id AS parent_user_id,
-          pu.username AS parent_username,
-          pu."profileImage" AS parent_profile_image
+          pc.id AS "parentId",
+          pc.content AS "parentContent",
+          pu.id AS "parentUserId",
+          pu.username AS "parentUsername",
+          pu."profileImage" AS "parentProfileImage"
         FROM "comment" c
         INNER JOIN CommentHierarchy ch ON c."parentCommentId" = ch.id
         JOIN "user" u ON c."userId" = u.id
@@ -415,7 +415,7 @@ export class CommentsService {
         WHERE c."eventId" = $1
       )
       SELECT * FROM CommentHierarchy
-      ORDER BY CASE WHEN "parentCommentId" IS NULL THEN 0 ELSE 1 END, created_at DESC;
+      ORDER BY CASE WHEN "parentCommentId" IS NULL THEN 0 ELSE 1 END, "createdAt" DESC;
     `;
       allComments = await this.commentRepository.query(query, [eventId]);
     }
@@ -436,26 +436,26 @@ export class CommentsService {
       commentMap.set(comment.id, {
         id: comment.id,
         content: comment.content,
-        createdAt: new Date(comment.created_at),
-        eventId: comment.event_id,
-        groupId: comment.group_id,
-        parentComment: comment.parent_comment_id
+        createdAt: new Date(comment.createdAt),
+        eventId: comment.eventId,
+        groupId: comment.groupId,
+        parentComment: comment.parentCommentId
           ? {
-              id: comment.parent_id,
-              content: comment.parent_content,
+              id: comment.parentId,
+              content: comment.parentContent,
               user: {
-                id: comment.parent_user_id,
-                username: comment.parent_username,
-                profileImage: comment.parent_profile_image || '',
+                id: comment.parentUserId,
+                username: comment.parentUsername,
+                profileImage: comment.parentProfileImage || '',
               },
             }
           : null,
         user: {
           id: comment.userId,
           username: comment.username,
-          profileImage: comment.profile_image || '',
+          profileImage: comment.profileImage || '',
         },
-        likeCount: comment.like_count || 0,
+        likeCount: comment.likeCount || 0,
         likes:
           commentWithLikes?.likes.map((like) => ({
             id: like.id,

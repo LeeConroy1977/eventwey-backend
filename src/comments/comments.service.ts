@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from '../entities/comment.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { CreateCommentDto } from './dtos/create-comment-dto';
 import { UsersService } from '../users/users.service';
 import { UpdateCommentDto } from './dtos/update-comment-dto';
@@ -338,7 +338,7 @@ export class CommentsService {
   async getCommentsForEvent(
     eventId: number,
     page: number = 1,
-    limit: number = 4,
+    limit: number = 12,
   ): Promise<{
     comments: CommentResponseDto[];
     total: number;
@@ -346,38 +346,160 @@ export class CommentsService {
     totalPages: number;
     hasMore: boolean;
   }> {
-    if (page < 1 || limit < 1)
+    if (page < 1 || limit < 1) {
       throw new BadRequestException('Invalid pagination parameters');
+    }
 
-    const [comments, total] = await this.commentRepository.findAndCount({
-      where: { eventId, parentComment: null },
-      relations: [
-        'user',
-        'likes',
-        'likes.user',
-        'parentComment',
-        'parentComment.user',
-      ],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    const formattedComments = await Promise.all(
-      comments.map(
-        async (comment) => await this.formatCommentWithReplies(comment),
-      ),
+    const [topLevelComments, total] = await this.commentRepository.findAndCount(
+      {
+        where: { eventId, parentComment: IsNull() },
+        relations: ['user', 'likes', 'likes.user'],
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      },
     );
 
+    const commentIds = topLevelComments.map((comment) => comment.id);
+    let allComments: any[] = [];
+    if (commentIds.length > 0) {
+      const query = `
+        WITH RECURSIVE CommentHierarchy AS (
+          -- Select top-level comments for the given IDs
+          SELECT 
+            c.id, 
+            c.content, 
+            c.created_at, 
+            c.event_id, 
+            c.group_id, 
+            c.parent_comment_id, 
+            c.user_id, 
+            c.like_count,
+            u.username, 
+            u.profile_image,
+            pc.id AS parent_id,
+            pc.content AS parent_content,
+            pu.id AS parent_user_id,
+            pu.username AS parent_username,
+            pu.profile_image AS parent_profile_image
+          FROM comments c
+          JOIN users u ON c.user_id = u.id
+          LEFT JOIN comments pc ON c.parent_comment_id = pc.id
+          LEFT JOIN users pu ON pc.user_id = pu.id
+          WHERE c.id IN (${commentIds.join(',')})
+
+          UNION ALL
+
+          -- Recursively fetch all replies (no limit)
+          SELECT 
+            c.id, 
+            c.content, 
+            c.created_at, 
+            c.event_id, 
+            c.group_id, 
+            c.parent_comment_id, 
+            c.user_id, 
+            c.like_count,
+            u.username, 
+            u.profile_image,
+            pc.id AS parent_id,
+            pc.content AS parent_content,
+            pu.id AS parent_user_id,
+            pu.username AS parent_username,
+            pu.profile_image AS parent_profile_image
+          FROM comments c
+          INNER JOIN CommentHierarchy ch ON c.parent_comment_id = ch.id
+          JOIN users u ON c.user_id = u.id
+          LEFT JOIN comments pc ON c.parent_comment_id = pc.id
+          LEFT JOIN users pu ON pc.user_id = pu.id
+          WHERE c.event_id = $1
+        )
+        SELECT * FROM CommentHierarchy
+        ORDER BY CASE WHEN parent_comment_id IS NULL THEN 0 ELSE 1 END, created_at DESC;
+      `;
+      allComments = await this.commentRepository.query(query, [eventId]);
+    }
+
+    const commentIdsAll = allComments.map((c) => c.id);
+    const commentsWithLikes = await this.commentRepository
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.likes', 'likes')
+      .leftJoinAndSelect('likes.user', 'user')
+      .where('comment.id IN (:...commentIds)', { commentIds: commentIdsAll })
+      .getMany();
+
+    const commentMap = new Map<number, CommentResponseDto>();
+    allComments.forEach((comment) => {
+      const commentWithLikes = commentsWithLikes.find(
+        (c) => c.id === comment.id,
+      );
+      commentMap.set(comment.id, {
+        id: comment.id,
+        content: comment.content,
+        createdAt: new Date(comment.created_at),
+        eventId: comment.event_id,
+        groupId: comment.group_id,
+        parentComment: comment.parent_comment_id
+          ? {
+              id: comment.parent_id,
+              content: comment.parent_content,
+              user: {
+                id: comment.parent_user_id,
+                username: comment.parent_username,
+                profileImage: comment.parent_profile_image || '',
+              },
+            }
+          : null,
+        user: {
+          id: comment.user_id,
+          username: comment.username,
+          profileImage: comment.profile_image || '',
+        },
+        likeCount: comment.like_count || 0,
+        likes:
+          commentWithLikes?.likes.map((like) => ({
+            id: like.id,
+            user: {
+              id: like.user.id,
+              username: like.user.username,
+              profileImage: like.user.profileImage || '',
+            },
+          })) || [],
+        replies: [],
+      });
+    });
+
+    const topLevelFormatted: CommentResponseDto[] = [];
+    commentMap.forEach((comment) => {
+      if (!comment.parentComment) {
+        topLevelFormatted.push(comment);
+      } else {
+        const parent = commentMap.get(comment.parentComment.id);
+        if (parent) {
+          parent.replies.push(comment);
+        }
+      }
+    });
+
+    const sortReplies = (comments: CommentResponseDto[]) => {
+      comments.forEach((comment) => {
+        comment.replies.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        sortReplies(comment.replies);
+      });
+    };
+    sortReplies(topLevelFormatted);
+
     return {
-      comments: formattedComments,
+      comments: topLevelFormatted,
       total,
       page,
       totalPages: Math.ceil(total / limit),
-      hasMore: page * limit < total,
+      hasMore: (page - 1) * limit + topLevelComments.length < total,
     };
   }
-
   async getCommentsForGroup(
     groupId: number,
     page: number = 1,

@@ -382,9 +382,9 @@ export class CommentsService {
             pu.id AS parent_user_id,
             pu.username AS parent_username,
             pu.profile_image AS parent_profile_image
-          FROM comments c
+          FROM Comment c
           JOIN users u ON c.user_id = u.id
-          LEFT JOIN comments pc ON c.parent_comment_id = pc.id
+          LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
           LEFT JOIN users pu ON pc.user_id = pu.id
           WHERE c.id IN (${commentIds.join(',')})
 
@@ -407,10 +407,10 @@ export class CommentsService {
             pu.id AS parent_user_id,
             pu.username AS parent_username,
             pu.profile_image AS parent_profile_image
-          FROM comments c
+          FROM Comment c
           INNER JOIN CommentHierarchy ch ON c.parent_comment_id = ch.id
           JOIN users u ON c.user_id = u.id
-          LEFT JOIN comments pc ON c.parent_comment_id = pc.id
+          LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
           LEFT JOIN users pu ON pc.user_id = pu.id
           WHERE c.event_id = $1
         )

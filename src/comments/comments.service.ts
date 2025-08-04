@@ -383,9 +383,9 @@ export class CommentsService {
             pu.username AS parent_username,
             pu.profile_image AS parent_profile_image
           FROM Comment c
-          JOIN users u ON c.user_id = u.id
+          JOIN User u ON c.user_id = u.id
           LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
-          LEFT JOIN users pu ON pc.user_id = pu.id
+          LEFT JOIN User pu ON pc.user_id = pu.id
           WHERE c.id IN (${commentIds.join(',')})
 
           UNION ALL
@@ -409,9 +409,9 @@ export class CommentsService {
             pu.profile_image AS parent_profile_image
           FROM Comment c
           INNER JOIN CommentHierarchy ch ON c.parent_comment_id = ch.id
-          JOIN users u ON c.user_id = u.id
+          JOIN User u ON c.user_id = u.id
           LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
-          LEFT JOIN users pu ON pc.user_id = pu.id
+          LEFT JOIN User pu ON pc.user_id = pu.id
           WHERE c.event_id = $1
         )
         SELECT * FROM CommentHierarchy
@@ -428,6 +428,7 @@ export class CommentsService {
       .where('comment.id IN (:...commentIds)', { commentIds: commentIdsAll })
       .getMany();
 
+
     const commentMap = new Map<number, CommentResponseDto>();
     allComments.forEach((comment) => {
       const commentWithLikes = commentsWithLikes.find(
@@ -436,7 +437,7 @@ export class CommentsService {
       commentMap.set(comment.id, {
         id: comment.id,
         content: comment.content,
-        createdAt: new Date(comment.created_at),
+        createdAt: new Date(comment.created_at), 
         eventId: comment.event_id,
         groupId: comment.group_id,
         parentComment: comment.parent_comment_id
@@ -468,6 +469,7 @@ export class CommentsService {
         replies: [],
       });
     });
+
 
     const topLevelFormatted: CommentResponseDto[] = [];
     commentMap.forEach((comment) => {

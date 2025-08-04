@@ -364,59 +364,59 @@ export class CommentsService {
     let allComments: any[] = [];
     if (commentIds.length > 0) {
       const query = `
-        WITH RECURSIVE CommentHierarchy AS (
-          -- Select top-level comments for the given IDs
-          SELECT 
-            c.id, 
-            c.content, 
-            c.created_at, 
-            c.event_id, 
-            c.group_id, 
-            c.parent_comment_id, 
-            c.userId, 
-            c.like_count,
-            u.username, 
-            u.profile_image,
-            pc.id AS parent_id,
-            pc.content AS parent_content,
-            pu.id AS parent_user_id,
-            pu.username AS parent_username,
-            pu.profile_image AS parent_profile_image
-          FROM Comment c
-          JOIN User u ON c.userId = u.id
-          LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
-          LEFT JOIN User pu ON pc.userId = pu.id
-          WHERE c.id IN (${commentIds.join(',')})
+      WITH RECURSIVE CommentHierarchy AS (
+        -- Select top-level comments for the given IDs
+        SELECT 
+          c.id, 
+          c.content, 
+          c.created_at, 
+          c."eventId", 
+          c."groupId", 
+          c."parentCommentId", 
+          c."userId", 
+          c.like_count,
+          u.username, 
+          u.profile_image,
+          pc.id AS parent_id,
+          pc.content AS parent_content,
+          pu.id AS parent_user_id,
+          pu.username AS parent_username,
+          pu.profile_image AS parent_profile_image
+        FROM "Comment" c
+        JOIN "User" u ON c."userId" = u.id
+        LEFT JOIN "Comment" pc ON c."parentCommentId" = pc.id
+        LEFT JOIN "User" pu ON pc."userId" = pu.id
+        WHERE c.id IN (${commentIds.join(',')})
 
-          UNION ALL
+        UNION ALL
 
-          -- Recursively fetch all replies (no limit)
-          SELECT 
-            c.id, 
-            c.content, 
-            c.created_at, 
-            c.event_id, 
-            c.group_id, 
-            c.parent_comment_id, 
-            c.userId, 
-            c.like_count,
-            u.username, 
-            u.profile_image,
-            pc.id AS parent_id,
-            pc.content AS parent_content,
-            pu.id AS parent_user_id,
-            pu.username AS parent_username,
-            pu.profile_image AS parent_profile_image
-          FROM Comment c
-          INNER JOIN CommentHierarchy ch ON c.parent_comment_id = ch.id
-          JOIN User u ON c.userId = u.id
-          LEFT JOIN Comment pc ON c.parent_comment_id = pc.id
-          LEFT JOIN User pu ON pc.userId = pu.id
-          WHERE c.event_id = $1
-        )
-        SELECT * FROM CommentHierarchy
-        ORDER BY CASE WHEN parent_comment_id IS NULL THEN 0 ELSE 1 END, created_at DESC;
-      `;
+        -- Recursively fetch all replies (no limit)
+        SELECT 
+          c.id, 
+          c.content, 
+          c.created_at, 
+          c."eventId", 
+          c."groupId", 
+          c."parentCommentId", 
+          c."userId", 
+          c.like_count,
+          u.username, 
+          u.profile_image,
+          pc.id AS parent_id,
+          pc.content AS parent_content,
+          pu.id AS parent_user_id,
+          pu.username AS parent_username,
+          pu.profile_image AS parent_profile_image
+        FROM "Comment" c
+        INNER JOIN CommentHierarchy ch ON c."parentCommentId" = ch.id
+        JOIN "User" u ON c."userId" = u.id
+        LEFT JOIN "Comment" pc ON c."parentCommentId" = pc.id
+        LEFT JOIN "User" pu ON pc."userId" = pu.id
+        WHERE c."eventId" = $1
+      )
+      SELECT * FROM CommentHierarchy
+      ORDER BY CASE WHEN "parentCommentId" IS NULL THEN 0 ELSE 1 END, created_at DESC;
+    `;
       allComments = await this.commentRepository.query(query, [eventId]);
     }
 
@@ -500,6 +500,7 @@ export class CommentsService {
       hasMore: (page - 1) * limit + topLevelComments.length < total,
     };
   }
+
   async getCommentsForGroup(
     groupId: number,
     page: number = 1,

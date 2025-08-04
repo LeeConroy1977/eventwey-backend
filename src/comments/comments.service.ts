@@ -383,7 +383,7 @@ export class CommentsService {
           pu.username AS parent_username,
           pu.profile_image AS parent_profile_image
         FROM "comment" c
-        JOIN "User" u ON c."userId" = u.id
+        JOIN "user" u ON c."userId" = u.id
         LEFT JOIN "comment" pc ON c."parentCommentId" = pc.id
         LEFT JOIN "user" pu ON pc."userId" = pu.id
         WHERE c.id IN (${commentIds.join(',')})
